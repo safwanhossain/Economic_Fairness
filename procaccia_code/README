@@ -1,0 +1,11 @@
+Following is the description of all the code files
+
+- Run "python generateData_mixture.py n m d K" to generate the synthetic data (i.e. the individual features, the loss function and the utility function), where 'n' is the desired number of training individuals, 'm' is the number of outcomes, 'd' is the number of features per user and 'K' is the number of components in the optimal randomized mixture (used to generate the data)
+
+- Run "python learningMixture.py Lambda K load" to solve the optimization problem on the generated dataset. Here, 'Lambda' is the parameter that trade-offs loss for envy-freeness and 'K' is the number of components allowed in the randomized classifier
+
+- "run.sh" is the bash script to repeatedly run the above two files for different values of n
+
+- Running "python compile_results.py r compile", where 'r' is the run number, goes through all the results stored in the directory "Runr", compiles them and saves them in csv files for plotting
+
+- "python plot_compiled.py r_max gen_plot" runs compile_results.py for the runs [1 ... r_max] to compile the results into csv files, averages out these runs and then plots the required figures
