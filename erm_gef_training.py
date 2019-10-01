@@ -150,7 +150,6 @@ def train_erm_gef(X, L_mat, U_mat, groups, lamb=0.5):
 
     objective = cp.Minimize(cp.sum(cp.multiply(learned_pred_losses, alphas)) + lamb*cp.sum(xis))
     constraints = []
-    print("Here") 
     for i in range(num_groups):
         for j in range(num_groups):
             if i != j:
@@ -164,9 +163,9 @@ def train_erm_gef(X, L_mat, U_mat, groups, lamb=0.5):
                             total_ij_utl += group_UX[i][li, learned_predictions[j][k][lj]]   
                     diff = total_ii_utl/group_sizes[i] - total_ij_utl/(group_sizes[i]*group_sizes[j])
                     util_diff.append(diff)
-                print("util_diff", util_diff)
-                print("alphas: ", alphas)
-                print("xis: ", xis)
+                #print("util_diff", util_diff)
+                #print("alphas: ", alphas)
+                #print("xis: ", xis)
                 constraints.append(cp.sum(cp.multiply(util_diff, alphas)) + xis[i,j] >= 0)
     
     for i in range(num_groups):
@@ -182,7 +181,7 @@ def train_erm_gef(X, L_mat, U_mat, groups, lamb=0.5):
     return learned_betas, learned_predictions_all, learned_predictions, opt_alphas
 
 def test_erm_gef():
-    Lambda = 2
+    Lambda = 10
     print("Group Envy Free Test: ")
     print("First compute ERM solution: ")
     train_X = np.array([[0.4, 0.3, 1.5, 0.1], \
@@ -209,7 +208,7 @@ def test_erm_gef():
                   [0.1, 0.9, 0.9, 0.1]])
 
     learned_betas, learned_pred_all, learned_pred_group, opt_alphas = \
-            train_erm_gef(train_X, L, U, samples_by_group, lamb=0)
+            train_erm(train_X, L, U, samples_by_group)
     total_envy, violations = total_group_envy(opt_alphas, U, samples_by_group, learned_pred_group) 
     loss = compute_final_loss(opt_alphas, L, train_X, learned_pred_all)
     optimal_loss = get_optimal_loss(L, train_X)
@@ -258,9 +257,10 @@ def size_test():
     print("ERM-GEF loss is: ", final_loss)
     print("ERM-GEF total envy: ", total_envy, "ERM total violations: ", violations)
     end_time = time.time()
-    print(end_time - start_time)
+    print("Time is: ", end_time - start_time)
 
 if __name__ == "__main__":
     test_erm_gef()
+    size_test()
     #while(True):
     #    size_test()

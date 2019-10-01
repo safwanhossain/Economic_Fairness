@@ -140,17 +140,17 @@ def train_erm_equi(X, L_mat, U_mat, groups, lamb=0.5):
                     constraints_obj += cp.maximum(USFjj + p_curr_utl_jj - USFii + n_curr_utl_ii,\
                             USFii + p_curr_utl_ii - USFjj + n_curr_utl_jj)
     
-        #objective = cp.Minimize((1/n)*loss_objective + lamb*constraints_obj)
-        objective = cp.Minimize(constraints_obj)
+        objective = cp.Minimize((1/n)*loss_objective + lamb*constraints_obj)
+        #objective = cp.Minimize(constraints_obj)
         prob = cp.Problem(objective)
 
         # Solving the problem
-        results = prob.solve(verbose=False, solver='ECOS')
+        results = prob.solve(cp.ECOS, verbose=False, feastol=1e-5, reltol=1e-5, abstol=1e-5)
         Beta_value = np.array(Beta.value)
         learned_betas.append(Beta_value)
     
-        total_equi = total_group_equi(Beta_value, k)
-        print("Total equi in training is: ", total_equi)
+        #total_equi = total_group_equi(Beta_value, k)
+        #print("Total equi in training is: ", total_equi)
 
         all_predictions = predictions(Beta_value, X)
         learned_predictions_all.append(all_predictions)
@@ -169,40 +169,51 @@ def train_erm_equi(X, L_mat, U_mat, groups, lamb=0.5):
             this_loss += L_X[i, learned_predictions_all[k][i]]
         learned_pred_losses.append(this_loss)
 
-    objective = cp.Minimize(cp.sum(cp.multiply(learned_pred_losses, alphas)) + lamb*cp.sum(xis))
+    objective = cp.Minimize((1/100)*(cp.sum(cp.multiply(learned_pred_losses, alphas))\
+            + lamb*50*cp.sum(xis)))
+    #objective = cp.Minimize(cp.sum(xis))
     constraints = []
     
     for i in range(num_groups):
-        for j in range(i, num_groups):
+        for j in range(num_groups):
+            util_diff = []
             if i != j:
-                util_diff = []
+                total_ii_utl = 0
+                total_jj_utl = 0
                 for k in range(K):
-                    total_ii_utl = 0
-                    total_jj_utl = 0
                     for li in range(group_sizes[i]):
                         total_ii_utl += group_UX[i][li, learned_predictions[i][k][li]]   
                     for lj in range(group_sizes[j]):
                         total_jj_utl += group_UX[j][lj, learned_predictions[j][k][lj]]
                     total_ii_utl /= group_sizes[i]
                     total_jj_utl /= group_sizes[j]
-                    diff = max(total_ii_utl - total_jj_utl, total_jj_utl - total_ii_utl)
-                    util_diff.append(diff)
-                constraints.append(cp.sum(cp.multiply(util_diff, alphas)) - xis[i,j] == 0)
+                    
+                    diff1 = total_ii_utl - total_jj_utl
+                    #diff2 = total_jj_utl - total_ii_utl
+                    util_diff.append(diff1)
+                
+                #print("i: ", i, "j: ", j, util_diff)
+                constraints.append(cp.sum(cp.multiply(util_diff, alphas)) + xis[i,j] >= 0)
+                #constraints.append((total_jj_utl - total_ii_utl - xis[i,j]) == 0)
+                #constraints.append(cp.sum(cp.multiply(util_diff, alphas)) - xis[i,j] == 0)
     
     for i in range(num_groups):
         for j in range(num_groups):
             constraints.append(xis[i,j] >= 0)
+            constraints.append(xis[i,j] == xis[j,i])
     for k in range(K):
         constraints.append(alphas[k] >= 0)
     constraints.append(cp.sum(alphas) == 1)
-    prob = cp.Problem(objective, constraints)
-    results = prob.solve(solver='ECOS')
-    opt_alphas = np.array(alphas.value).flatten()
 
+    prob = cp.Problem(objective, constraints)
+    results = prob.solve(cp.ECOS, verbose=False, feastol=1e-5, reltol=1e-5, abstol=1e-5)
+    opt_alphas = np.array(alphas.value).flatten()
+    #print("XIS")
+    #print(np.array(xis.value))
     return learned_betas, learned_predictions_all, learned_predictions, opt_alphas
       
 def test_erm_equi():
-    Lambda = 0.1
+    Lambda = 10
     print("Group Envy Free Test: ")
     print("First compute ERM solution: ")
     train_X = np.array([[0.4, 0.3, 1.5, 0.1], \
@@ -238,22 +249,49 @@ def test_erm_equi():
     print("ERM loss is: ", loss)
     print("ERM total equi diff: ", total_equi, "ERM total violations: ", violations)
     print("")
-    print("Finished test")
     
     print("Now do wth Equitability constraint with lambda: ", Lambda)
     learned_betas, learned_pred_all, learned_pred_group, opt_alphas = \
             train_erm_equi(train_X, L, U, samples_by_group, lamb=Lambda)
-    print("Opt Alphas: ", opt_alphas)
-    total_equi, violations = total_group_equi(opt_alphas, U, samples_by_group, learned_pred_group) 
-     
-    def_alphas = get_default_alpha_arr(K)
-    def_total_equi, def_violations = total_group_equi(def_alphas, U, samples_by_group, learned_pred_group) 
-    print("Def alpha gets: ", def_total_equi)
-
+    total_equi, violations = total_group_equi(opt_alphas, U, samples_by_group, \
+            learned_pred_group) 
     loss = compute_final_loss(opt_alphas, L, train_X, learned_pred_all)
     print("ERM-equi Loss is : ", loss)
     print("ERM-equi total equi diff: ", total_equi, "ERM-equi total violations: ", violations)
 
+def size_test():
+    n = 70
+    m = 16
+    d = 5
+    K = 4
+    print("\nRunning Size Test")
+
+    train_X = generate_data(n, m, 'uniform')
+    group_dist = [0.25, 0.25, 0.25, 0.25]
+    samples_by_group = define_groups(train_X, group_dist)
+    L = generate_loss_matrix(d, m, 'uniform')
+    U = generate_utility_matrix(d, m, 'uniform')
+    
+    learned_betas, learned_predictions, learned_pred_group, alphas = train_erm(train_X, L, U, \
+            samples_by_group)
+    final_loss = compute_final_loss(alphas, L, train_X, learned_predictions)
+    total_equi, violations = total_group_equi(alphas, U, samples_by_group, learned_pred_group) 
+    opt_loss = get_optimal_loss(L, train_X)
+    
+    print("Optimal loss is: ", opt_loss)
+    print("ERM loss is: ", final_loss)
+    print("ERM total equi: ", total_equi, "ERM total violations: ", violations)
+   
+    start_time = time.time()
+    learned_betas, learned_predictions, learned_pred_group, opt_alphas = \
+            train_erm_equi(train_X, L, U, samples_by_group, lamb=10)
+    final_loss = compute_final_loss(opt_alphas, L, train_X, learned_predictions)
+    total_equi, violations = total_group_equi(alphas, U, samples_by_group, learned_pred_group) 
+    print("ERM-equi loss is: ", final_loss)
+    print("ERM-equi total equi: ", total_equi, "ERM total violations: ", violations)
+    end_time = time.time()
+    print("Time is: ", end_time - start_time)
+
 if __name__ == "__main__":
     test_erm_equi()
-
+    size_test()

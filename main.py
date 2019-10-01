@@ -47,7 +47,7 @@ def run_simulation(tup):
     
     return (train_data, test_data)
 
-def sweep_ns_parameters_parallel(ns_vals, func, lambda_val, group_dist):
+def sweep_ns_parameters_parallel(ns_vals, func, lambda_val, group_dist, L_mats, U_mats):
     # TODO: Fix how fairness is stored? 
     # TODO: Pass functions and not strings for distribution parameters
     """ fairness_func is the function used to compute fairness; None for ERM_loss
@@ -95,8 +95,8 @@ def sweep_ns_parameters_parallel(ns_vals, func, lambda_val, group_dist):
 
         inputs = []
         for sim in range(num_sims):
-            L_mat = generate_loss_matrix(d, m, 'uniform')
-            U_mat = generate_utility_matrix(d, m, 'uniform')
+            L_mat = L_mats[sim]
+            U_mat = U_mats[sim]
             train_X = generate_data(ns_, m, 'uniform')
             test_X = generate_data(nt, m, 'uniform')
             
@@ -202,18 +202,21 @@ def main():
 
     run = True
     if run:
+        L_mats = [generate_loss_matrix(d, m, 'uniform') for i in range(num_sims)]
+        U_mats = [generate_utility_matrix(d, m, 'uniform') for i in range(num_sims)]
+
         start = time.time()
-        sweep_ns_parameters_parallel(ns_vals, train_erm, 0, group_dist)
+        sweep_ns_parameters_parallel(ns_vals, train_erm, 0, group_dist, L_mats, U_mats)
         end = time.time()
         print("ERM experiment took:", end-start)
         
         start = time.time()
-        sweep_ns_parameters_parallel(ns_vals, train_erm_welfare, 5, group_dist)
+        sweep_ns_parameters_parallel(ns_vals, train_erm_welfare, 10, group_dist, L_mats, U_mats)
         end = time.time()
         print("ERM welfare took: ", end-start)
         
         #start = time.time()
-        #sweep_ns_parameters_parallel(ns_vals, train_erm_gef, 10, group_dist)
+        #sweep_ns_parameters_parallel(ns_vals, train_erm_gef, 10, group_dist, L_mats, U_mats)
         #end = time.time()
         #print("ERM envy free took: ", end-start)
 

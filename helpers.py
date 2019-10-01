@@ -149,7 +149,7 @@ def total_group_equi(alphas, U_mat, groups, group_pred):
                         groups[i], group_pred[i], group_pred[i], same=True)
                 u_jj = group_utility(alphas, U_mat, groups[j], \
                         groups[j], group_pred[j], group_pred[j], same=True)    
-                print("i: ", i, "j: ", j, "uii:", u_ii, "ujj: ", u_jj) 
+                #print("i: ", i, "j: ", j, "uii:", u_ii, "ujj: ", u_jj) 
                 total_equi += abs(u_jj - u_ii)
                 if total_equi >= 1e-3:
                     violations += 1
