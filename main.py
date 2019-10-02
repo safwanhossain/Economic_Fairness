@@ -6,6 +6,7 @@ import time
 from constants import *
 from helpers import *
 from erm_gef_training import train_erm_gef
+from erm_equi_training import train_erm_equi
 from erm_welfare_training import train_erm_welfare
 from erm_training import train_erm
 
@@ -15,14 +16,25 @@ from erm_training import train_erm
     # using different train and test sets will be run, and their average taken as the data point
 
 def run_simulation(tup):
-    ns_, lambda_val, group_dist, func, L_mat, U_mat, train_X, test_X = tup
-    
-    train_s_by_group = define_groups(train_X, group_dist)
-    test_s_by_group = define_groups(test_X, group_dist)
+    ns_, lambda_val, group_dist, func, L_mat, U_mat, train_Xs, test_Xs = tup
+   
+    beta_values = 0
+    i = 0
+    while(beta_values == 0):
+        if i == len(train_Xs):
+            print("Exhausted all x values")
+            return (None,None)
 
-    beta_values, learned_predictions, learned_pred_group, opt_alphas =\
-            func(train_X, L_mat, U_mat, train_s_by_group, lamb=lambda_val) 
-    
+        train_X, test_X = train_Xs[i], test_Xs[i]
+        train_s_by_group = define_groups(train_X, group_dist)
+        test_s_by_group = define_groups(test_X, group_dist)
+        
+        beta_values, learned_predictions, learned_pred_group, opt_alphas =\
+                func(train_X, L_mat, U_mat, train_s_by_group, lamb=lambda_val) 
+        if beta_values == 0:
+            print("EXCEPTION WAS RAISED")
+        i += 1
+
     # Get all the data for training data
     tr_total_loss = compute_final_loss(opt_alphas, L_mat, train_X, learned_predictions)
     tr_total_welfare = compute_welfare(opt_alphas, U_mat, train_X, learned_predictions)
@@ -97,29 +109,42 @@ def sweep_ns_parameters_parallel(ns_vals, func, lambda_val, group_dist, L_mats, 
         for sim in range(num_sims):
             L_mat = L_mats[sim]
             U_mat = U_mats[sim]
-            train_X = generate_data(ns_, m, 'uniform')
-            test_X = generate_data(nt, m, 'uniform')
+            train_Xs = [generate_data(ns_, m, 'uniform') for i in range(10)]
+            test_Xs = [generate_data(nt, m, 'uniform') for i in range(10)]
             
-            tup = (ns_, lambda_val, group_dist, func, L_mat, U_mat, train_X, test_X)
+            tup = (ns_, lambda_val, group_dist, func, L_mat, U_mat, train_Xs, test_Xs)
             inputs.append(tup)
 
         executor = concurrent.futures.ProcessPoolExecutor(NUM_CORES)
         futures = [executor.submit(run_simulation, item) for item in inputs]
         concurrent.futures.wait(futures)
-        #futures = [run_simulation(item) for item in inputs]
+        
         for sim, future in enumerate(futures):
             assert(future.done())
             train_data, test_data = future.result()
-            #train_data, test_data = future
-            c_train_losses[sim], c_train_welfare[sim], c_train_envy[sim], c_train_envy_vio[sim], \
-                c_train_equi[sim], c_train_equi_vio[sim] = train_data
-            c_test_losses[sim], c_test_welfare[sim], c_test_envy[sim], c_test_envy_vio[sim], \
-                c_test_equi[sim], c_test_equi_vio[sim] = test_data
+            if train_data == None:
+                c_train_losses[sim], c_train_welfare[sim], c_train_envy[sim], c_train_envy_vio[sim], \
+                    c_train_equi[sim], c_train_equi_vio[sim] = -1, -1, -1, -1, -1, -1
+                c_test_losses[sim], c_test_welfare[sim], c_test_envy[sim], c_test_envy_vio[sim], \
+                    c_test_equi[sim], c_test_equi_vio[sim] = -1, -1, -1, -1, -1, -1
+            else:
+                c_train_losses[sim], c_train_welfare[sim], c_train_envy[sim], c_train_envy_vio[sim], \
+                    c_train_equi[sim], c_train_equi_vio[sim] = train_data
+                c_test_losses[sim], c_test_welfare[sim], c_test_envy[sim], c_test_envy_vio[sim], \
+                    c_test_equi[sim], c_test_equi_vio[sim] = test_data
 
-        #print(c_train_losses)
-        #print(c_test_losses)
-        #print(c_train_welfare)
-        #print(c_test_welfare)
+        np.delete(c_train_losses, np.where(c_train_losses==-1))
+        np.delete(c_test_losses, np.where(c_test_losses==-1))
+        np.delete(c_train_welfare, np.where(c_train_welfare==-1))
+        np.delete(c_test_welfare, np.where(c_test_welfare==-1))
+        np.delete(c_train_envy, np.where(c_train_envy==-1))
+        np.delete(c_test_envy, np.where(c_test_envy==-1))
+        np.delete(c_train_envy_vio, np.where(c_train_envy_vio==-1))
+        np.delete(c_test_envy_vio, np.where(c_test_envy_vio==-1))
+        np.delete(c_train_equi, np.where(c_train_equi==-1))
+        np.delete(c_test_equi, np.where(c_test_equi==-1))
+        np.delete(c_train_equi_vio, np.where(c_train_equi_vio==-1))
+        np.delete(c_test_equi_vio, np.where(c_test_equi_vio==-1))
 
         train_losses[index], train_losses_var[index] = np.mean(c_train_losses), np.sqrt(np.var(c_train_losses))
         test_losses[index], test_losses_var[index] = np.mean(c_test_losses), np.sqrt(np.var(c_test_losses))
@@ -139,8 +164,8 @@ def sweep_ns_parameters_parallel(ns_vals, func, lambda_val, group_dist, L_mats, 
         train_equi_vio[index], train_equi_vio_var[index] = np.mean(c_train_equi_vio), np.sqrt(np.var(c_train_equi_vio))
         test_equi_vio[index], test_equi_vio_var[index] = np.mean(c_test_equi_vio), np.sqrt(np.var(c_test_equi_vio))
        
-        print("Envy train and test: ", train_envy[index], test_envy[index])
-        print("Envy vio train and test: ", train_envy_vio[index], test_envy_vio[index])
+        #print("Envy train and test: ", train_envy[index], test_envy[index])
+        #print("Envy vio train and test: ", train_envy_vio[index], test_envy_vio[index])
 
         row = [str(ns_)] + [str(train_losses[index])] + [str(train_losses_var[index])] +\
                            [str(test_losses[index])] + [str(test_losses_var[index])] +\
@@ -192,19 +217,25 @@ def benchmark_erm_envy():
     print("ERM envy free took: ", end-start)
 
 def main():
-    #ns_vals = [100,120,140,160,180]
-    ns_vals = [10, 20, 40, 50, 60, 75, 80, 100, 120]
+    ns_vals = [10,20,30,40,50,60,70,80,90,100,110,120,130,140,150]
     group_dist = [0.25, 0.25, 0.25, 0.25]
     
     #benchmark_erm()
     #benchmark_erm_welfare()
     #benchmark_erm_envy()
-
+        
+    #L_mats = [generate_loss_matrix(d, m, 'uniform') for i in range(num_sims)]
+    #U_mats = [generate_utility_matrix(d, m, 'uniform') for i in range(num_sims)]
+    #np.savez("L_mat_file", *L_mats)
+    #np.savez("U_mat_file", *U_mats)
+    
+    l_file = np.load('L_mat_file.npz')
+    L_mats = [l_file[i] for i in l_file.files]
+    u_file = np.load('U_mat_file.npz')
+    U_mats = [u_file[i] for i in u_file.files]
+    
     run = True
     if run:
-        L_mats = [generate_loss_matrix(d, m, 'uniform') for i in range(num_sims)]
-        U_mats = [generate_utility_matrix(d, m, 'uniform') for i in range(num_sims)]
-
         start = time.time()
         sweep_ns_parameters_parallel(ns_vals, train_erm, 0, group_dist, L_mats, U_mats)
         end = time.time()
@@ -219,6 +250,11 @@ def main():
         #sweep_ns_parameters_parallel(ns_vals, train_erm_gef, 10, group_dist, L_mats, U_mats)
         #end = time.time()
         #print("ERM envy free took: ", end-start)
+        
+        #start = time.time()
+        #sweep_ns_parameters_parallel(ns_vals, train_erm_equi, 10, group_dist, L_mats, U_mats)
+        #end = time.time()
+        #print("ERM equi took: ", end-start)
 
 if __name__ == "__main__":
     main()

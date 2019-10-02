@@ -32,7 +32,7 @@ def read_from_csv(filenames, indicies):
     
     return f_x_vals, f_train, f_train_var, f_test, f_test_var
 
-def plot(labels, data, file_names, plot_var=False):
+def plot(labels, data, plot_var=False):
     """ Plot the test and train losses and fairness
         labels are tuple of the following: (plt_name, x_label, fairness_label)
         data is a tuple of: (x_vals, train, train_var, test_loss, test_loss_var, train_fairness, 
@@ -47,8 +47,9 @@ def plot(labels, data, file_names, plot_var=False):
     ax1.set_xlabel(x_label, fontsize=21)
     ax1.set_ylabel(fairness_label, fontsize=21)
         
+    labels = ["ERM", "ERM-Welfare", "ERM-Group Envy", "ERM-Group Equity"]
     for i in range(num_files):
-        ax1.plot(f_x_vals[i], f_train[i], color=colors[i], linewidth=4, label=file_names[i])
+        ax1.plot(f_x_vals[i], f_train[i], color=colors[i], linewidth=4, label=labels[i])
         ax1.plot(f_x_vals[i], f_test[i], color=colors[i], linestyle=":", linewidth=4)
         if plot_var:
             ax1.fill_between(f_x_vals[i], f_train[i]-f_train_var[i], f_train[i]+f_train_var[i], color=colors[i], alpha=0.35)
@@ -63,7 +64,10 @@ def plot(labels, data, file_names, plot_var=False):
     plt.savefig(plt_name)
 
 if __name__ == "__main__":
-    """ Run this file as "./plot_from_csv <csv_file_names> <metric> <plot_label> <x_label> <plot_var true/false"""
+    """ Run this file as "./plot_from_csv <csv_file_names> <metric> <plot_label> <x_label> <plot_var true/false
+        Pass in files in this order: erm, erm_welfare, erm_envy, erm_equity
+    """
+    
     metrics_dict = {'loss':[1,2,3,4], 'welfare':[5,6,7,8], 'envy':[9,10,11,12], 'equi':[17,18,19,20]}
     inp_files = [sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]]
     files = []
@@ -80,5 +84,5 @@ if __name__ == "__main__":
     indicies = metrics_dict[metric]
     data = read_from_csv(files, indicies)
     labels = (plot_label, x_label, metric)
-    plot(labels, data, files, plot_var=plot_var)
+    plot(labels, data, plot_var=plot_var)
 

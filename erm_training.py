@@ -32,7 +32,10 @@ def train_erm(X, L_mat, U_mat=None, groups=None, lamb=0):
         prob = cp.Problem(objective)
         
         # Solving the problem
-        results = prob.solve(cp.ECOS, verbose=False, feastol=1e-5, reltol=1e-5, abstol=1e-5)
+        try:
+            results = prob.solve(solver=cp.SCS, verbose=False)#, feastol=1e-5, abstol=1e-5)
+        except:
+            return 0, 0, 0, 0
         Beta_value = np.array(Beta.value)
         learned_betas.append(Beta_value)
 

@@ -140,12 +140,14 @@ def train_erm_equi(X, L_mat, U_mat, groups, lamb=0.5):
                     constraints_obj += cp.maximum(USFjj + p_curr_utl_jj - USFii + n_curr_utl_ii,\
                             USFii + p_curr_utl_ii - USFjj + n_curr_utl_jj)
     
-        objective = cp.Minimize((1/n)*loss_objective + lamb*constraints_obj)
-        #objective = cp.Minimize(constraints_obj)
+        objective = cp.Minimize((1/10)*(1/n)*loss_objective + lamb*constraints_obj)
         prob = cp.Problem(objective)
 
         # Solving the problem
-        results = prob.solve(cp.ECOS, verbose=False, feastol=1e-5, reltol=1e-5, abstol=1e-5)
+        try:
+            results = prob.solve(solver=cp.SCS, verbose=False)#, feastol=1e-5, abstol=1e-5)
+        except:
+            return 0, 0, 0, 0
         Beta_value = np.array(Beta.value)
         learned_betas.append(Beta_value)
     
@@ -169,9 +171,8 @@ def train_erm_equi(X, L_mat, U_mat, groups, lamb=0.5):
             this_loss += L_X[i, learned_predictions_all[k][i]]
         learned_pred_losses.append(this_loss)
 
-    objective = cp.Minimize((1/100)*(cp.sum(cp.multiply(learned_pred_losses, alphas))\
-            + lamb*50*cp.sum(xis)))
-    #objective = cp.Minimize(cp.sum(xis))
+    objective = cp.Minimize((1/10)*(cp.sum(cp.multiply(learned_pred_losses, alphas))\
+            + lamb*cp.sum(xis)))
     constraints = []
     
     for i in range(num_groups):
@@ -206,7 +207,10 @@ def train_erm_equi(X, L_mat, U_mat, groups, lamb=0.5):
     constraints.append(cp.sum(alphas) == 1)
 
     prob = cp.Problem(objective, constraints)
-    results = prob.solve(cp.ECOS, verbose=False, feastol=1e-5, reltol=1e-5, abstol=1e-5)
+    try:
+        results = prob.solve(cp.SCS, verbose=False)#, feastol=1e-5, abstol=1e-5)
+    except:
+        return 0,0,0,0 
     opt_alphas = np.array(alphas.value).flatten()
     #print("XIS")
     #print(np.array(xis.value))

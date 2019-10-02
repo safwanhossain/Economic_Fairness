@@ -95,7 +95,6 @@ def train_erm_gef(X, L_mat, U_mat, groups, lamb=0.5):
                 convex_version = cp.max(-group_UX[i][l, :] + cp.matmul(Beta,groups[i][l,:])) - \
                         cp.matmul(Beta[b[i][l],:],groups[i][l,:])
                 curr_utl_ii += def_alphas[k]*convex_version
-                #curr_utl_ii += def_alphas[k]*cp.max(-group_UX[i][l, :] + Beta*groups[i][l,:]) - Beta[b[i][l],:]*groups[i][l,:]
             USFii = USFii * (1/group_sizes[i])
             curr_utl_ii = curr_utl_ii * (1/group_sizes[i])
 
@@ -119,12 +118,14 @@ def train_erm_gef(X, L_mat, U_mat, groups, lamb=0.5):
                     
                     constraints_obj += cp.maximum(USFij + curr_utl_ij - USFii + curr_utl_ii, 0)
     
-        objective = cp.Minimize(((1/n)*loss_objective + lamb*constraints_obj))
-        #objective = cp.Minimize(constraints_obj)
+        objective = cp.Minimize((1/10)*((1/n)*loss_objective + lamb*constraints_obj))
         prob = cp.Problem(objective)
 
         # Solving the problem
-        results = prob.solve(cp.ECOS, verbose=False, feastol=1e-5, reltol=1e-5, abstol=1e-5)
+        try:
+            results = prob.solve(solver=cp.SCS, verbose=False)#, feastol=1e-5, abstol=1e-5)
+        except:
+            return 0, 0, 0, 0
         Beta_value = np.array(Beta.value)
         learned_betas.append(Beta_value)
     
@@ -175,7 +176,10 @@ def train_erm_gef(X, L_mat, U_mat, groups, lamb=0.5):
         constraints.append(alphas[k] >= 0)
     constraints.append(cp.sum(alphas) == 1)
     prob = cp.Problem(objective, constraints)
-    results = prob.solve(solver='ECOS')
+    try:
+        results = prob.solve(cp.SCS, verbose=False)#, feastol=1e-5, abstol=1e-5)
+    except:
+        return 0,0,0,0 
     opt_alphas = np.array(alphas.value).flatten()
     
     return learned_betas, learned_predictions_all, learned_predictions, opt_alphas
