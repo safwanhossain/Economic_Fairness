@@ -171,8 +171,8 @@ def train_erm_equi(X, L_mat, U_mat, groups, lamb=0.5):
             this_loss += L_X[i, learned_predictions_all[k][i]]
         learned_pred_losses.append(this_loss)
 
-    objective = cp.Minimize((1/10)*(cp.sum(cp.multiply(learned_pred_losses, alphas))\
-            + lamb*cp.sum(xis)))
+    objective = cp.Minimize(cp.sum(cp.multiply(learned_pred_losses, alphas))\
+            + lamb*cp.sum(xis))
     constraints = []
     
     for i in range(num_groups):
@@ -220,19 +220,19 @@ def test_erm_equi():
     Lambda = 10
     print("Group Envy Free Test: ")
     print("First compute ERM solution: ")
-    train_X = np.array([[0.4, 0.3, 1.5, 0.1], \
+    train_X = np.array([[0.8, 0.3, 1.5, 0.1], \
                         [0.3, 1.1, 1.7, 0.9], \
-                        [1.1, 1.4, 0.5, 1.2],
+                        [1.0, 1.4, 0.5, 1.2],
                         [0.3, 0.5, 1.2, 1.3],
-                        [1.3, 0.2, 0.7, 0.9],
+                        [1.0, 0.2, 0.7, 0.9],
                         [0.7, 1.5, 1.9, 0.3],
                         [0.2, 0.9, 1.7, 0.3],
                         [0.1, 0.2, 1.9, 1.3],
                         [0.7, 0.277, 0.9, 1.1],
-                        [1.1, 1.2, 0.7, 0.9],
+                        [1.0, 1.2, 0.7, 0.9],
                         [0.1, 0.8, 0.3, 0.5], \
                         ]) # 11 x 5
-    group_dist = [0.2, 0.2, 0.2, 0.2, 0.2]
+    group_dist = [0.25, 0.25, 0.25, 0.25]
     samples_by_group = define_groups(train_X, group_dist)
     L = np.array([[0.3, 0.1, 0.4, 0.2],\
                   [0.7, 0.4, 0.1, 0.7],\
@@ -264,7 +264,7 @@ def test_erm_equi():
     print("ERM-equi total equi diff: ", total_equi, "ERM-equi total violations: ", violations)
 
 def size_test():
-    n = 70
+    n = 60
     m = 16
     d = 5
     K = 4
@@ -276,7 +276,7 @@ def size_test():
     L = generate_loss_matrix(d, m, 'uniform')
     U = generate_utility_matrix(d, m, 'uniform')
     
-    learned_betas, learned_predictions, learned_pred_group, alphas = train_erm(train_X, L, U, \
+    erm_betas, learned_predictions, learned_pred_group, alphas = train_erm(train_X, L, U, \
             samples_by_group)
     final_loss = compute_final_loss(alphas, L, train_X, learned_predictions)
     total_equi, violations = total_group_equi(alphas, U, samples_by_group, learned_pred_group) 
@@ -287,15 +287,31 @@ def size_test():
     print("ERM total equi: ", total_equi, "ERM total violations: ", violations)
    
     start_time = time.time()
-    learned_betas, learned_predictions, learned_pred_group, opt_alphas = \
-            train_erm_equi(train_X, L, U, samples_by_group, lamb=10)
+    cons_betas, learned_predictions, learned_pred_group, opt_alphas = \
+            train_erm_equi(train_X, L, U, samples_by_group, lamb=3)
     final_loss = compute_final_loss(opt_alphas, L, train_X, learned_predictions)
     total_equi, violations = total_group_equi(alphas, U, samples_by_group, learned_pred_group) 
     print("ERM-equi loss is: ", final_loss)
     print("ERM-equi total equi: ", total_equi, "ERM total violations: ", violations)
     end_time = time.time()
     print("Time is: ", end_time - start_time)
+    
+    test_X = generate_data(100, m, 'uniform')
+    group_dist = [0.25, 0.25, 0.25, 0.25]
+    test_s_by_group = define_groups(test_X, group_dist)
+    st_learned_predictions, st_learned_pred_group = \
+            get_all_predictions(erm_betas, test_X, test_s_by_group, K)
+    st_total_equi, st_envy_violations = total_group_equi(opt_alphas, U, test_s_by_group, \
+            st_learned_pred_group)
+    print("ERM get this much equi on test: ", st_total_equi)
+    
+    st_learned_predictions, st_learned_pred_group = \
+            get_all_predictions(cons_betas, test_X, test_s_by_group, K)
+    st_total_equi, st_envy_violations = total_group_equi(opt_alphas, U, test_s_by_group, \
+            st_learned_pred_group)
+    print("ERM-Equi get this much equi on test: ", st_total_equi)
 
 if __name__ == "__main__":
     test_erm_equi()
-    size_test()
+    while True:
+        size_test()

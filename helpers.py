@@ -40,19 +40,26 @@ def define_groups(X, group_dist):
     assert(sum(group_dist)-1 <= 1e-5)
     assert(min(group_dist) >= 0)
 
+    # Let the first element in the feature vector represent group identity
+    X0s = X[:,0]
     low = 0
-    #unif = np.random.uniform(size=(n,1)).reshape(n,)
-    unif = np.linspace(0,1,n)
     samples_by_group = {}
     for group_id, val in enumerate(group_dist):
         high = low + val
-        low_indicies = np.where(unif >= low)
-        high_indicies = np.where(unif <= high)
+        low_indicies = np.where(X0s >= low)
+        high_indicies = np.where(X0s <= high)
         indicies = np.intersect1d(low_indicies, high_indicies)
         samples_by_group[group_id] = X[indicies,:]
         low = high
 
     return samples_by_group
+
+def test_groups():
+    X = np.random.uniform(size=(6,6))
+    print(X)
+    group_dist = [0.25, 0.25, 0.25, 0.25]
+    grps = define_groups(X, group_dist)
+    print(grps)
 
 def get_default_alpha_arr(K):
     alpha = []
@@ -159,3 +166,5 @@ def total_group_equi(alphas, U_mat, groups, group_pred):
 def get_convex_version(X, Mat_X, Beta, y, i):  
     return cp.max(Mat_X[i, :] + cp.matmul(Beta,X[i,:])) - cp.matmul(Beta[y[i],:], X[i,:])
 
+if __name__ == "__main__":
+    test_groups()

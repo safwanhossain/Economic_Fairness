@@ -45,7 +45,7 @@ def run_simulation(tup):
     train_data = (tr_total_loss, tr_total_welfare, tr_total_envy, tr_envy_violations, \
             tr_total_equi, tr_equi_violations)
     
-    # Get all the data for training data
+    # Get all the data for test data
     st_learned_predictions, st_learned_pred_group = \
             get_all_predictions(beta_values, test_X, test_s_by_group, K)
     st_total_loss = compute_final_loss(opt_alphas, L_mat, test_X, st_learned_predictions)
@@ -132,7 +132,10 @@ def sweep_ns_parameters_parallel(ns_vals, func, lambda_val, group_dist, L_mats, 
                     c_train_equi[sim], c_train_equi_vio[sim] = train_data
                 c_test_losses[sim], c_test_welfare[sim], c_test_envy[sim], c_test_envy_vio[sim], \
                     c_test_equi[sim], c_test_equi_vio[sim] = test_data
-
+            
+            print(ns, "Train Equi: ", c_train_equi[sim])
+            print(ns, "Test Equi: ", c_test_equi[sim])
+        
         np.delete(c_train_losses, np.where(c_train_losses==-1))
         np.delete(c_test_losses, np.where(c_test_losses==-1))
         np.delete(c_train_welfare, np.where(c_train_welfare==-1))
@@ -183,6 +186,131 @@ def sweep_ns_parameters_parallel(ns_vals, func, lambda_val, group_dist, L_mats, 
         csv_writer.writerow(row)
         csv_file.flush()
 
+def sweep_g_parameters_parallel(g_vals, func, lambda_val, L_mats, U_mats):
+    # TODO: Fix how fairness is stored? 
+    # TODO: Pass functions and not strings for distribution parameters
+    """ fairness_func is the function used to compute fairness; None for ERM_loss
+        lu_mat is a tuple of the loss and utility matrix 
+        group_dist is a list, with each element representing the propotion of individuals in that group
+            If groups are not required (for ERM and ERM_welfare), pass in NONE
+        sample_dist is a dictionary with keys: ['data', 'loss', 'utility']. It gives the distribution
+            to use for the generation of each. If None, Uniform(0,1) will be used for all
+    """
+    import concurrent.futures 
+    
+    filename = "sweep_g_"+func.__name__+".csv"
+    print("Params: lambda=", lambda_val, "num_sim=", num_sims) 
+    print("Saving results to", filename)
+    
+    csv_file = open(filename, mode='w')
+    csv_writer = csv.writer(csv_file, delimiter=',')
+    num_vals = len(g_vals)
+
+    # These store the average values for each ns
+    train_losses, test_losses, train_losses_var, test_losses_var = \
+            np.ones(num_vals), np.ones(num_vals), np.ones(num_vals), np.ones(num_vals)
+    train_welfare, test_welfare, train_welfare_var, test_welfare_var = \
+            np.ones(num_vals), np.ones(num_vals), np.ones(num_vals), np.ones(num_vals)
+    train_envy, test_envy, train_envy_var, test_envy_var = \
+            np.ones(num_vals), np.ones(num_vals), np.ones(num_vals), np.ones(num_vals)
+    train_envy_vio, test_envy_vio, train_envy_vio_var, test_envy_vio_var = \
+            np.ones(num_vals), np.ones(num_vals), np.ones(num_vals), np.ones(num_vals)
+    train_equi, test_equi, train_equi_var, test_equi_var = \
+            np.ones(num_vals), np.ones(num_vals), np.ones(num_vals), np.ones(num_vals)
+    train_equi_vio, test_equi_vio, train_equi_vio_var, test_equi_vio_var = \
+            np.ones(num_vals), np.ones(num_vals), np.ones(num_vals), np.ones(num_vals)
+    
+    for index, g_ in enumerate(g_vals):
+        g_ = int(g_)
+        print("g: ", g_)
+        group_dist = [1/g_ for i in range(g_)]
+        print(group_dist)
+        # these store values for every simulation - will be averaged
+        c_train_losses, c_test_losses = np.ones(num_sims), np.ones(num_sims)
+        c_train_welfare, c_test_welfare = np.ones(num_sims), np.ones(num_sims)
+        c_train_envy, c_test_envy = np.ones(num_sims), np.ones(num_sims)
+        c_train_envy_vio, c_test_envy_vio = np.ones(num_sims), np.ones(num_sims)
+        c_train_equi, c_test_equi = np.ones(num_sims), np.ones(num_sims)
+        c_train_equi_vio, c_test_equi_vio = np.ones(num_sims), np.ones(num_sims)
+
+        inputs = []
+        for sim in range(num_sims):
+            L_mat = L_mats[sim]
+            U_mat = U_mats[sim]
+            train_Xs = [generate_data(ns, m, 'uniform') for i in range(10)]
+            test_Xs = [generate_data(nt, m, 'uniform') for i in range(10)]
+        
+            tup = (ns, lambda_val, group_dist, func, L_mat, U_mat, train_Xs, test_Xs)
+            inputs.append(tup)
+
+        executor = concurrent.futures.ProcessPoolExecutor(NUM_CORES)
+        futures = [executor.submit(run_simulation, item) for item in inputs]
+        concurrent.futures.wait(futures)
+        
+        for sim, future in enumerate(futures):
+            assert(future.done())
+            train_data, test_data = future.result()
+            if train_data == None:
+                c_train_losses[sim], c_train_welfare[sim], c_train_envy[sim], c_train_envy_vio[sim], \
+                    c_train_equi[sim], c_train_equi_vio[sim] = -1, -1, -1, -1, -1, -1
+                c_test_losses[sim], c_test_welfare[sim], c_test_envy[sim], c_test_envy_vio[sim], \
+                    c_test_equi[sim], c_test_equi_vio[sim] = -1, -1, -1, -1, -1, -1
+            else:
+                c_train_losses[sim], c_train_welfare[sim], c_train_envy[sim], c_train_envy_vio[sim], \
+                    c_train_equi[sim], c_train_equi_vio[sim] = train_data
+                c_test_losses[sim], c_test_welfare[sim], c_test_envy[sim], c_test_envy_vio[sim], \
+                    c_test_equi[sim], c_test_equi_vio[sim] = test_data
+
+        np.delete(c_train_losses, np.where(c_train_losses==-1))
+        np.delete(c_test_losses, np.where(c_test_losses==-1))
+        np.delete(c_train_welfare, np.where(c_train_welfare==-1))
+        np.delete(c_test_welfare, np.where(c_test_welfare==-1))
+        np.delete(c_train_envy, np.where(c_train_envy==-1))
+        np.delete(c_test_envy, np.where(c_test_envy==-1))
+        np.delete(c_train_envy_vio, np.where(c_train_envy_vio==-1))
+        np.delete(c_test_envy_vio, np.where(c_test_envy_vio==-1))
+        np.delete(c_train_equi, np.where(c_train_equi==-1))
+        np.delete(c_test_equi, np.where(c_test_equi==-1))
+        np.delete(c_train_equi_vio, np.where(c_train_equi_vio==-1))
+        np.delete(c_test_equi_vio, np.where(c_test_equi_vio==-1))
+
+        train_losses[index], train_losses_var[index] = np.mean(c_train_losses), np.sqrt(np.var(c_train_losses))
+        test_losses[index], test_losses_var[index] = np.mean(c_test_losses), np.sqrt(np.var(c_test_losses))
+        
+        train_welfare[index], train_welfare_var[index] = np.mean(c_train_welfare), np.sqrt(np.var(c_train_welfare))
+        test_welfare[index], test_welfare_var[index] = np.mean(c_test_welfare), np.sqrt(np.var(c_test_welfare))
+        
+        train_envy[index], train_envy_var[index] = np.mean(c_train_envy), np.sqrt(np.var(c_train_envy))
+        test_envy[index], test_envy_var[index] = np.mean(c_test_envy), np.sqrt(np.var(c_test_envy))
+        
+        train_envy_vio[index], train_envy_vio_var[index] = np.mean(c_train_envy_vio), np.sqrt(np.var(c_train_envy_vio))
+        test_envy_vio[index], test_envy_vio_var[index] = np.mean(c_test_envy_vio), np.sqrt(np.var(c_test_envy_vio))
+        
+        train_equi[index], train_equi_var[index] = np.mean(c_train_equi), np.sqrt(np.var(c_train_equi))
+        test_equi[index], test_equi_var[index] = np.mean(c_test_equi), np.sqrt(np.var(c_test_equi))
+        
+        train_equi_vio[index], train_equi_vio_var[index] = np.mean(c_train_equi_vio), np.sqrt(np.var(c_train_equi_vio))
+        test_equi_vio[index], test_equi_vio_var[index] = np.mean(c_test_equi_vio), np.sqrt(np.var(c_test_equi_vio))
+       
+        #print("Envy train and test: ", train_envy[index], test_envy[index])
+        #print("Envy vio train and test: ", train_envy_vio[index], test_envy_vio[index])
+
+        row = [str(g_)] + [str(train_losses[index])] + [str(train_losses_var[index])] +\
+                           [str(test_losses[index])] + [str(test_losses_var[index])] +\
+                           [str(train_welfare[index])] + [str(train_welfare_var[index])] +\
+                           [str(test_welfare[index])] +  [str(test_welfare_var[index])] + \
+                           [str(train_envy[index])] +  [str(train_envy_var[index])] + \
+                           [str(test_envy[index])] +  [str(test_envy_var[index])] + \
+                           [str(train_envy_vio[index])] +  [str(train_envy_vio_var[index])] + \
+                           [str(test_envy_vio[index])] +  [str(test_envy_vio_var[index])] + \
+                           [str(train_equi[index])] +  [str(train_equi_var[index])] + \
+                           [str(test_equi[index])] +  [str(test_equi_var[index])] + \
+                           [str(train_equi_vio[index])] +  [str(train_equi_vio_var[index])] + \
+                           [str(test_equi_vio[index])] +  [str(test_equi_vio_var[index])]
+
+        csv_writer.writerow(row)
+        csv_file.flush()
+
 def benchmark_erm():
     # Following values were used for this benchmark test: lambda_welf=1, num_sims=50, NUM_CORES=16
     # It took 57.5s on my Vector Workstation (not server)
@@ -216,10 +344,56 @@ def benchmark_erm_envy():
     end = time.time()
     print("ERM envy free took: ", end-start)
 
-def main():
-    ns_vals = [10,20,30,40,50,60,70,80,90,100,110,120,130,140,150]
+def ns_experiment(L_mats, U_mats):
+    ns_vals = [30,40,50,60,70,80,90,100,110,120,130,140,150]
+    #ns_vals = [180,200] 
     group_dist = [0.25, 0.25, 0.25, 0.25]
     
+    start = time.time()
+    sweep_ns_parameters_parallel(ns_vals, train_erm, 0, group_dist, L_mats, U_mats)
+    end = time.time()
+    print("ERM experiment took:", end-start)
+    
+    start = time.time()
+    sweep_ns_parameters_parallel(ns_vals, train_erm_welfare, 10, group_dist, L_mats, U_mats)
+    end = time.time()
+    print("ERM welfare took: ", end-start)
+    
+    #start = time.time()
+    #sweep_ns_parameters_parallel(ns_vals, train_erm_gef, 10, group_dist, L_mats, U_mats)
+    #end = time.time()
+    #print("ERM envy free took: ", end-start)
+    
+    #start = time.time()
+    #sweep_ns_parameters_parallel(ns_vals, train_erm_equi, 10, group_dist, L_mats, U_mats)
+    #end = time.time()
+    #print("ERM equi took: ", end-start)
+
+def g_experiment(L_mats, U_mats):
+    #ns_vals = [10,20,30,40,50,60,70,80,90,100,110,120,130,140,150]
+    g_vals = [3,5,7,9] 
+    
+    start = time.time()
+    sweep_g_parameters_parallel(g_vals, train_erm, 0, L_mats, U_mats)
+    end = time.time()
+    print("ERM experiment took:", end-start)
+    
+    start = time.time()
+    sweep_g_parameters_parallel(g_vals, train_erm_welfare, 10, L_mats, U_mats)
+    end = time.time()
+    print("ERM welfare took: ", end-start)
+    
+    #start = time.time()
+    #sweep_g_parameters_parallel(g_vals, train_erm_gef, 10, L_mats, U_mats)
+    #end = time.time()
+    #print("ERM envy free took: ", end-start)
+    
+    #start = time.time()
+    #sweep_g_parameters_parallel(g_vals, train_erm_equi, 10, L_mats, U_mats)
+    #end = time.time()
+    #print("ERM equi took: ", end-start)
+
+def main():
     #benchmark_erm()
     #benchmark_erm_welfare()
     #benchmark_erm_envy()
@@ -233,28 +407,8 @@ def main():
     L_mats = [l_file[i] for i in l_file.files]
     u_file = np.load('U_mat_file.npz')
     U_mats = [u_file[i] for i in u_file.files]
-    
-    run = True
-    if run:
-        start = time.time()
-        sweep_ns_parameters_parallel(ns_vals, train_erm, 0, group_dist, L_mats, U_mats)
-        end = time.time()
-        print("ERM experiment took:", end-start)
-        
-        start = time.time()
-        sweep_ns_parameters_parallel(ns_vals, train_erm_welfare, 10, group_dist, L_mats, U_mats)
-        end = time.time()
-        print("ERM welfare took: ", end-start)
-        
-        #start = time.time()
-        #sweep_ns_parameters_parallel(ns_vals, train_erm_gef, 10, group_dist, L_mats, U_mats)
-        #end = time.time()
-        #print("ERM envy free took: ", end-start)
-        
-        #start = time.time()
-        #sweep_ns_parameters_parallel(ns_vals, train_erm_equi, 10, group_dist, L_mats, U_mats)
-        #end = time.time()
-        #print("ERM equi took: ", end-start)
+   
+    g_experiment(L_mats, U_mats)
 
 if __name__ == "__main__":
     main()
