@@ -47,7 +47,7 @@ constraints = []
 for i in range(n):
 	for j in range(n):
 		if(i != j):
-			constraints.append(cvxpy.sum(cvxpy.multiply(alphas, u[i, all_predictions[:,i]] - u[i, all_predictions[:,j]])) >= 0.00001)
+			constraints.append(cvxpy.sum(cvxpy.multiply(alphas, u[i, all_predictions[:,i]] - u[i, all_predictions[:,j]])) >= 1e-10)
 #for i in range(n):
 #    constraints.append(cvxpy.pnorm(u[i,:], p=2) == 1)
 

@@ -14,6 +14,7 @@ for k in range(K-1):
         alpha_value = alpha_value / 2
         alpha.append(alpha_value)
 alpha.append(alpha_value)
+print(alpha)
 
 if argv[3] == "load":
         L_total = np.loadtxt('L.csv', delimiter=',')
@@ -91,6 +92,7 @@ for k in range(K):
 
                                 # computing both parts of the constraint loss relaxed
                                 part1 = cvxpy.max(u[i,:] + beta*X[j,:]) - beta[s[i],:]*X[j,:]#beta[b[j],:]*X[j,:]
+                                print("Is scalar:", beta[s[i],:]*X[j,:])
                                 part2 = cvxpy.max(-u[i,:] + beta*X[i,:]) - beta[b[i],:]*X[i,:]
                                 constraints_obj += maximum(USFij+alpha[k]*part1 -USFii+alpha[k]*part2, 0)
 
@@ -98,7 +100,7 @@ for k in range(K):
         prob = Problem(objective)
 
         # Solving the problem
-        results = prob.solve()
+        results = prob.solve(verbose=True)
         beta_value = np.array(beta.value)
         learned_betas.append(beta_value)
 

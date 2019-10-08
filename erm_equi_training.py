@@ -68,9 +68,9 @@ def train_erm_equi(X, L_mat, U_mat, groups, lamb=0.5):
                     
                     for lj in range(group_sizes[j]):
                         convex_version_p = np.max(group_UX[j][lj, :] + np.matmul(given_Beta,groups[j][lj,:])) - \
-                            np.matmul(given_Beta[s[j][lj],:],groups[j][lj,:])
+                            np.matmul(given_Beta[b[j][lj],:],groups[j][lj,:])
                         convex_version_n = np.max(-group_UX[j][lj, :] + np.matmul(given_Beta,groups[j][lj,:])) - \
-                            np.matmul(given_Beta[s[j][lj],:],groups[j][lj,:])
+                            np.matmul(given_Beta[b[j][lj],:],groups[j][lj,:])
                         p_curr_utl_jj += def_alphas[k]*convex_version_p
                         n_curr_utl_jj += def_alphas[k]*convex_version_n
             
@@ -92,7 +92,7 @@ def train_erm_equi(X, L_mat, U_mat, groups, lamb=0.5):
             # construct list with entries L(x_i, y) + beta_y^T x_i - beta_{y_i}^T x_i; for each y and y_i defined appropriately
             loss_objective += get_convex_version(X, L_X, Beta, y, i)
 
-        # Our Envy-Free Objective is over groups - so iterate over them
+        # Our Equity Objective is over groups - so iterate over them
         constraints_obj = 0
         for i in range(num_groups):
             # First compute the utility group i has for itself
@@ -153,7 +153,6 @@ def train_erm_equi(X, L_mat, U_mat, groups, lamb=0.5):
     
         #total_equi = total_group_equi(Beta_value, k)
         #print("Total equi in training is: ", total_equi)
-
         all_predictions = predictions(Beta_value, X)
         learned_predictions_all.append(all_predictions)
 
@@ -303,15 +302,16 @@ def size_test():
             get_all_predictions(erm_betas, test_X, test_s_by_group, K)
     st_total_equi, st_envy_violations = total_group_equi(opt_alphas, U, test_s_by_group, \
             st_learned_pred_group)
-    print("ERM get this much equi on test: ", st_total_equi)
+    print("ERM get this much equi diff on test: ", st_total_equi)
     
     st_learned_predictions, st_learned_pred_group = \
             get_all_predictions(cons_betas, test_X, test_s_by_group, K)
     st_total_equi, st_envy_violations = total_group_equi(opt_alphas, U, test_s_by_group, \
             st_learned_pred_group)
-    print("ERM-Equi get this much equi on test: ", st_total_equi)
+    print("ERM-Equi get this much equi diff on test: ", st_total_equi)
 
 if __name__ == "__main__":
     test_erm_equi()
-    while True:
-        size_test()
+    size_test()
+    #while True:
+    #    size_test()

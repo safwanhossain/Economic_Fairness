@@ -4,6 +4,7 @@ import time
 from constants import *
 from helpers import *
 from erm_training import train_erm
+from sklearn.preprocessing import normalize
 
 def train_erm_gef(X, L_mat, U_mat, groups, lamb=0.5):
     L_X = np.matmul(X, L_mat.T)
@@ -239,9 +240,9 @@ def size_test():
 
     train_X = generate_data(n, m, 'uniform')
     group_dist = [0.25, 0.25, 0.25, 0.25]
-    samples_by_group = define_groups(train_X, group_dist)
+    samples_by_group = define_groups(train_X, group_dist, True)
     L = generate_loss_matrix(d, m, 'uniform')
-    U = generate_utility_matrix(d, m, 'uniform')
+    U = generate_utility_matrix_var(d, m, 'uniform', 0)
     
     erm_betas, learned_predictions, learned_pred_group, alphas = train_erm(train_X, L, U, \
             samples_by_group)
@@ -265,7 +266,7 @@ def size_test():
 
     test_X = generate_data(n, m, 'uniform')
     group_dist = [0.25, 0.25, 0.25, 0.25]
-    test_s_by_group = define_groups(test_X, group_dist)
+    test_s_by_group = define_groups(test_X, group_dist, True)
     st_learned_predictions, st_learned_pred_group = \
             get_all_predictions(erm_betas, test_X, test_s_by_group, K)
     st_total_envy, st_envy_violations = total_group_envy(opt_alphas, U, test_s_by_group, \
@@ -281,5 +282,3 @@ def size_test():
 if __name__ == "__main__":
     test_erm_gef()
     size_test()
-    #while(True):
-    #    size_test()

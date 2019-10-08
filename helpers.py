@@ -4,14 +4,20 @@ from sys import argv
 import os
 from scipy import stats
 from scipy.special import softmax
+from sklearn.preprocessing import normalize
 
 # generate a numpy matrix of size \R num_samples * m, dist can be "uniform" or "normal"
-def generate_data(n_s, m, dist):
+def generate_data(n_s, m, dist, normalized=False):
     if (dist == 'uniform'):
         X = np.random.uniform(low=0.0, high=1.0, size=(n_s, m))
     elif(dist == 'normal'):
         X = stats.truncnorm.rvs(-1.0, 1.0, 0.0, 1.0, size=(n_s, m))
-    return X
+    
+    if normalized:
+        norm_X = normalize(X, axis=1, norm='l1')    
+        return norm_X
+    else:
+        return X
 
 # generate matrix L of size d x m according to distribution dist
 def generate_loss_matrix(d, m, dist):
@@ -29,7 +35,20 @@ def generate_utility_matrix(d, m, dist):
         U = stats.truncnorm.rvs(-1.0, 1.0, 0.0, 1.0, size=(d, m))
     return U
 
-def define_groups(X, group_dist):
+def generate_utility_matrix_var(d, m, dist, var):
+    if (dist == 'uniform'):
+        U_vec = np.random.uniform(low=0.0, high=1.0, size=(d,))
+    elif (dist == 'normal'):
+        U_vec = stats.truncnorm.rvs(-1.0, 1.0, 0.0, 1.0, size=(d,))
+    
+    U_mat = np.ones((d,m))
+    for col in range(m):
+        noise = np.random.normal(scale=var, size=(d,))
+        U_mat[:,col] = np.clip(U_vec+noise, 0, 1)
+    
+    return U_mat
+
+def define_groups(X, group_dist, normalized=False):
     """ Given a vector where each element represents the portion of the population that should
         belong to each group, and the size of the vector represents the number of groups.
 
@@ -49,7 +68,12 @@ def define_groups(X, group_dist):
         low_indicies = np.where(X0s >= low)
         high_indicies = np.where(X0s <= high)
         indicies = np.intersect1d(low_indicies, high_indicies)
-        samples_by_group[group_id] = X[indicies,:]
+        
+        if normalized:
+            norm_X = normalize(X[indicies,:], axis=1, norm='l1')    
+            samples_by_group[group_id] = norm_X
+        else:
+            samples_by_group[group_id] = X[indicies,:]
         low = high
 
     return samples_by_group
@@ -139,9 +163,28 @@ def total_group_envy(alphas, U_mat, groups, group_pred):
                 u_ij = group_utility(alphas, U_mat, groups[i], \
                         groups[j], group_pred[i], group_pred[j])    
                 total_envy += max(u_ij - u_ii, 0)
-                if u_ij > u_ii + 1e-2:
+                if u_ij > u_ii + 1e-3:
                     violations += 1
 
+    return total_envy, violations
+
+def total_average_envy(alphas, U_mat, X, pred):
+    U_X = np.matmul(X, U_mat.T)
+    n, m = X.shape
+    total_envy = 0
+    violations = 0
+
+    for i in range(n):
+        for j in range(n):
+            if i != j:
+                u_ii, u_ij = 0, 0
+                for k in range(len(alphas)):
+                    u_ii += alphas[k]*U_X[i, pred[k][i]]
+                    u_ij += alphas[k]*U_X[i, pred[k][j]]
+                    total_envy += max(u_ij - u_ii, 0)            
+                if u_ij > u_ii + 1e-3:
+                    violations += 1
+    total_envy = total_envy * (1/(n*(n-1)))
     return total_envy, violations
 
 def total_group_equi(alphas, U_mat, groups, group_pred):
@@ -162,6 +205,19 @@ def total_group_equi(alphas, U_mat, groups, group_pred):
                     violations += 1
 
     return total_equi, violations
+
+def min_group_welfare(alphas, U_mat, groups, group_pred):
+    # return the welfare of group with the lowest welfare
+    welfares = []
+    num_groups = len(groups.keys())
+
+    for i in range(num_groups):
+        u_ii = group_utility(alphas, U_mat, groups[i], \
+                    groups[i], group_pred[i], group_pred[i], same=True)
+        welfares.append(u_ii)        
+    
+    return min(welfares)
+
 
 def get_convex_version(X, Mat_X, Beta, y, i):  
     return cp.max(Mat_X[i, :] + cp.matmul(Beta,X[i,:])) - cp.matmul(Beta[y[i],:], X[i,:])

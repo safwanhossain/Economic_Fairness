@@ -47,7 +47,7 @@ def plot(labels, data, plot_var=False):
     ax1.set_xlabel(x_label, fontsize=21)
     ax1.set_ylabel(fairness_label, fontsize=21)
         
-    labels = ["ERM", "ERM-Welfare", "ERM-Group Envy", "ERM-Group Equity"]
+    labels = ["ERM", "ERM-Welfare", "ERM-Group Envy", "ERM-Min Welfare"]
     for i in range(num_files):
         ax1.plot(f_x_vals[i], f_train[i], color=colors[i], linewidth=4, label=labels[i])
         ax1.plot(f_x_vals[i], f_test[i], color=colors[i], linestyle=":", linewidth=4)
@@ -68,7 +68,7 @@ if __name__ == "__main__":
         Pass in files in this order: erm, erm_welfare, erm_envy, erm_equity
     """
     
-    metrics_dict = {'loss':[1,2,3,4], 'welfare':[5,6,7,8], 'envy':[9,10,11,12], 'equi':[17,18,19,20]}
+    metrics_dict = {'loss':[1,2,3,4], 'welfare':[5,6,7,8], 'envy':[9,10,11,12], 'equi':[17,18,19,20], 'min_welf':[25,26,27,28]}
     inp_files = [sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]]
     files = []
     for inp_file in inp_files:

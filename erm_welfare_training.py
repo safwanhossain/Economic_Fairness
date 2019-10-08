@@ -53,7 +53,7 @@ def train_erm_welfare(X, L_mat, U_mat, groups=None, lamb=0.5):
             return 0, 0, 0, 0
         Beta_value = np.array(Beta.value)
         learned_betas.append(Beta_value)
-
+        
         all_predictions = predictions(Beta_value, X)
         learned_predictions.append(all_predictions)
 
@@ -63,6 +63,7 @@ def train_erm_welfare(X, L_mat, U_mat, groups=None, lamb=0.5):
     alpha_losses = []
     constraints = []
     for i in range(K):
+        alpha_loss = 0
         for i in range(n):
             alpha_loss += L_X[i, learned_predictions[k][i]] - lamb*U_X[i, learned_predictions[k][i]]
         alpha_losses.append(alpha_loss)
@@ -85,7 +86,7 @@ def train_erm_welfare(X, L_mat, U_mat, groups=None, lamb=0.5):
         learned_pred_group = {h:[] for h in range(num_groups)} 
         for k in range(K):
             for h in range(num_groups):
-                learned_pred_group[h].append(predictions(Beta_value, groups[h]))
+                learned_pred_group[h].append(predictions(learned_betas[k], groups[h]))
     
     return learned_betas, learned_predictions, learned_pred_group, opt_alphas
 
