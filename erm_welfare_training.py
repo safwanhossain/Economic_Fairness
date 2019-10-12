@@ -10,7 +10,11 @@ def train_erm_welfare(X, L_mat, U_mat, groups=None, lamb=0.5):
         So this is basically deterministic
     """
     L_X = np.matmul(X, L_mat.T)
+    L_X = normalize(L_X, axis=1, norm='l1')
+    
     U_X = np.matmul(X, U_mat.T)
+    U_X = normalize(U_X, axis=1, norm='l1')
+    
     n, d = L_X.shape
     n, m = X.shape
 
@@ -136,8 +140,8 @@ def test_erm_welfare():
     #print("TEST PASSED")
 
 def size_test():
-    n = 200
-    m = 16
+    n = 50
+    m = 10
     d = 5
     K = 4
     print("\n\nRunning Size Test")
@@ -172,5 +176,5 @@ def size_test():
     #print("TEST PASSED")
 
 if __name__ == "__main__":
-    test_erm_welfare()
+    #test_erm_welfare()
     size_test()

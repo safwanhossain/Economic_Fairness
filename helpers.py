@@ -96,6 +96,7 @@ def get_default_alpha_arr(K):
 
 def get_optimal_loss(L_mat, X):
     loss_matrix = np.matmul(X, L_mat.T)
+    loss_matrix = normalize(loss_matrix, axis=1, norm='l1')
     (n, d) = loss_matrix.shape
     min_val = loss_matrix.min(axis=1)
     assert(min_val.shape == (n,))
@@ -120,9 +121,11 @@ def get_all_predictions(beta_values, all_X, groups, K_):
 
 def compute_final_loss(alphas, L_mat, X, learned_predictions):
     L_X = np.matmul(X, L_mat.T)
+    L_X = normalize(L_X, axis=1, norm='l1')
+    
     final_loss = 0
     K = len(alphas)
-    n = learned_predictions[0].shape[0]
+    n, m = X.shape
     
     for k in range(K):
         for i in range(n):
@@ -136,6 +139,10 @@ def group_utility(alphas, U_mat, group_i, group_j, pred_i, pred_j, same=False):
     ## Compute the utility group i has for group j's clasification
     UX_i = np.matmul(group_i, U_mat.T)
     UX_j = np.matmul(group_j, U_mat.T)
+    
+    UX_i = normalize(UX_i, axis=1, norm='l1')
+    UX_j = normalize(UX_j, axis=1, norm='l1')
+    
     ni = group_i.shape[0]
     nj = group_j.shape[0]
 
@@ -165,11 +172,14 @@ def total_group_envy(alphas, U_mat, groups, group_pred):
                 total_envy += max(u_ij - u_ii, 0)
                 if u_ij > u_ii + 1e-3:
                     violations += 1
-
+    
+    total_envy = total_envy / (num_groups*(num_groups-1)) 
+    violations = violations / (num_groups*(num_groups-1))
     return total_envy, violations
 
 def total_average_envy(alphas, U_mat, X, pred):
     U_X = np.matmul(X, U_mat.T)
+    U_X = normalize(U_X, axis=1, norm='l1')
     n, m = X.shape
     total_envy = 0
     violations = 0
@@ -185,6 +195,7 @@ def total_average_envy(alphas, U_mat, X, pred):
                 if u_ij > u_ii + 1e-3:
                     violations += 1
     total_envy = total_envy * (1/(n*(n-1)))
+    violations = violations * (1/(n*(n-1)))
     return total_envy, violations
 
 def total_group_equi(alphas, U_mat, groups, group_pred):
@@ -204,6 +215,8 @@ def total_group_equi(alphas, U_mat, groups, group_pred):
                 if total_equi >= 1e-3:
                     violations += 1
 
+    total_equi = total_equi / (num_groups*(num_groups-1)) 
+    violations = violations / (num_groups*(num_groups-1))
     return total_equi, violations
 
 def min_group_welfare(alphas, U_mat, groups, group_pred):

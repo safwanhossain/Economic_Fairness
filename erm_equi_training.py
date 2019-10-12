@@ -7,7 +7,11 @@ from erm_training import train_erm
 
 def train_erm_equi(X, L_mat, U_mat, groups, lamb=0.5):
     L_X = np.matmul(X, L_mat.T)
+    L_X = normalize(L_X, axis=1, norm='l1')
+    
     U_X = np.matmul(X, U_mat.T)
+    U_X = normalize(U_X, axis=1, norm='l1')
+
     n, d = L_X.shape
     n, m = X.shape
         
@@ -17,8 +21,8 @@ def train_erm_equi(X, L_mat, U_mat, groups, lamb=0.5):
     group_sizes = [groups[i].shape[0] for i in range(num_groups)]
     group_LX, group_UX = {}, {}
     for i in range(num_groups):
-        group_LX[i] = np.matmul(groups[i], L_mat.T)
-        group_UX[i] = np.matmul(groups[i], U_mat.T)
+        group_LX[i] = normalize(np.matmul(groups[i], L_mat.T), axis=1, norm='l1')
+        group_UX[i] = normalize(np.matmul(groups[i], U_mat.T), axis=1, norm='l1')
 
     # Constructing argmax/min labels used repeatedly
     y = np.argmin(L_X, axis = 1)

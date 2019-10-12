@@ -110,7 +110,11 @@ def procaccia_ef(X, L_mat, U_mat, groups, lamb=0.5):
 
 def train_erm_envy_free(X, L_mat, U_mat, groups, lamb=0.5):
     L_X = np.matmul(X, L_mat.T)
+    L_X = normalize(L_X, axis=1, norm='l1')
+
     U_X = np.matmul(X, U_mat.T)
+    U_X = normalize(U_X, axis=1, norm='l1')
+    
     n, d = L_X.shape
     n, m = X.shape
     
@@ -263,12 +267,13 @@ def size_test():
     K = 4
     print("\nRunning Size Test")
 
-    train_X = generate_data_normalized(n, m, 'uniform')
+    train_X = generate_data(n, m, 'uniform')
+    train_X = normalize(train_X, axis=1, norm='l1')    
     group_dist = [0.25, 0.25, 0.25, 0.25]
     samples_by_group = define_groups(train_X, group_dist)
     L = generate_loss_matrix(d, m, 'uniform')
     U = generate_utility_matrix_var(d, m, 'uniform', 0)
-    
+
     erm_betas, learned_predictions, learned_pred_group, alphas = train_erm(train_X, L, U, \
             samples_by_group)
     final_loss = compute_final_loss(alphas, L, train_X, learned_predictions)
@@ -288,6 +293,7 @@ def size_test():
     print("ERM-Envy Free average envy: ", avg_envy, "ERM total violations: ", violations)
     end_time = time.time()
     print("Time is: ", end_time - start_time)
+    print(learned_predictions)
 
     test_X = generate_data(n, m, 'uniform')
     group_dist = [0.25, 0.25, 0.25, 0.25]

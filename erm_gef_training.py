@@ -8,18 +8,21 @@ from sklearn.preprocessing import normalize
 
 def train_erm_gef(X, L_mat, U_mat, groups, lamb=0.5):
     L_X = np.matmul(X, L_mat.T)
+    L_X = normalize(L_X, axis=1, norm='l1')
+    
     U_X = np.matmul(X, U_mat.T)
+    U_X = normalize(U_X, axis=1, norm='l1')
     n, d = L_X.shape
     n, m = X.shape
-        
+
     # For each group, compute its U_X and L_X matrix
     num_groups = len(groups.keys())
     group_ids = groups.keys()
     group_sizes = [groups[i].shape[0] for i in range(num_groups)]
     group_LX, group_UX = {}, {}
     for i in range(num_groups):
-        group_LX[i] = np.matmul(groups[i], L_mat.T)
-        group_UX[i] = np.matmul(groups[i], U_mat.T)
+        group_LX[i] = normalize(np.matmul(groups[i], L_mat.T), axis=1, norm='l1')
+        group_UX[i] = normalize(np.matmul(groups[i], U_mat.T), axis=1, norm='l1')
 
     # Constructing argmax/min labels used repeatedly
     y = np.argmin(L_X, axis = 1)
@@ -233,17 +236,18 @@ def test_erm_gef():
 
 def size_test():
     n = 50
-    m = 16
+    m = 10
     d = 5
     K = 4
     print("\nRunning Size Test")
 
     train_X = generate_data(n, m, 'uniform')
     group_dist = [0.25, 0.25, 0.25, 0.25]
-    samples_by_group = define_groups(train_X, group_dist, True)
+    samples_by_group = define_groups(train_X, group_dist)
+    train_X = normalize(train_X, axis=1, norm='l1')    
     L = generate_loss_matrix(d, m, 'uniform')
-    U = generate_utility_matrix_var(d, m, 'uniform', 0)
-    
+    U = generate_utility_matrix(d, m, 'uniform')
+
     erm_betas, learned_predictions, learned_pred_group, alphas = train_erm(train_X, L, U, \
             samples_by_group)
     final_loss = compute_final_loss(alphas, L, train_X, learned_predictions)

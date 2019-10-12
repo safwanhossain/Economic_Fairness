@@ -10,7 +10,6 @@ from erm_gef_training import train_erm_gef
 from erm_equi_training import train_erm_equi
 from erm_welfare_training import train_erm_welfare
 from erm_training import train_erm
-from erm_min_welf_training import train_erm_min_welfare
 from erm_envy_free_training import train_erm_envy_free
 
 # For our experiments, we will be sweeping ns, d, and lambda values over a range
@@ -40,7 +39,7 @@ def run_simulation(tup):
         if beta_values == 0:
             print("EXCEPTION WAS RAISED")
         i += 1
-
+    
     # Get all the data for training data
     tr_total_loss = compute_final_loss(opt_alphas, L_mat, train_X, learned_predictions)
     tr_total_welfare = compute_welfare(opt_alphas, U_mat, train_X, learned_predictions)
@@ -48,10 +47,10 @@ def run_simulation(tup):
             learned_pred_group) 
     tr_total_equi, tr_equi_violations = total_group_equi(opt_alphas, U_mat, train_s_by_group, \
             learned_pred_group) 
-    tr_total_min_welf = min_group_welfare(opt_alphas, U_mat, train_s_by_group, \
-            learned_pred_group) 
+    tr_avg_envy, tr_in_envy_violations = total_average_envy(opt_alphas, U_mat, train_X, \
+            learned_predictions)
     train_data = (tr_total_loss, tr_total_welfare, tr_total_envy, tr_envy_violations, \
-            tr_total_equi, tr_equi_violations, tr_total_min_welf)
+            tr_total_equi, tr_equi_violations, tr_avg_envy, tr_in_envy_violations)
     
     # Get all the data for test data
     st_learned_predictions, st_learned_pred_group = \
@@ -62,10 +61,10 @@ def run_simulation(tup):
             st_learned_pred_group) 
     st_total_equi, st_equi_violations = total_group_equi(opt_alphas, U_mat, test_s_by_group, \
             st_learned_pred_group) 
-    st_min_welfare = min_group_welfare(opt_alphas, U_mat, test_s_by_group, \
-            st_learned_pred_group) 
+    st_avg_envy, st_in_envy_violations = total_average_envy(opt_alphas, U_mat, test_X, \
+            st_learned_predictions)
     test_data = (st_total_loss, st_total_welfare, st_total_envy, st_envy_violations, \
-            st_total_equi, st_equi_violations, st_min_welfare)
+            st_total_equi, st_equi_violations, st_avg_envy, st_in_envy_violations)
     
     return (train_data, test_data)
 
@@ -81,7 +80,7 @@ def sweep_ns_parameters_parallel(ns_vals, func, lambda_val, group_dist, L_mats, 
     """
     import concurrent.futures 
     
-    filename = "sweep_n_"+func.__name__+".csv"
+    filename = "sweep_n_5s"+func.__name__+".csv"
     print("Params: lambda=", lambda_val, "num_sim=", num_sims) 
     print("Saving results to", filename)
     
@@ -102,7 +101,9 @@ def sweep_ns_parameters_parallel(ns_vals, func, lambda_val, group_dist, L_mats, 
             np.ones(num_vals), np.ones(num_vals), np.ones(num_vals), np.ones(num_vals)
     train_equi_vio, test_equi_vio, train_equi_vio_var, test_equi_vio_var = \
             np.ones(num_vals), np.ones(num_vals), np.ones(num_vals), np.ones(num_vals)
-    train_min_welfare, test_min_welfare, train_min_welfare_var, test_min_welfare_var = \
+    train_in_envy, test_in_envy, train_in_envy_var, test_in_envy_var = \
+            np.ones(num_vals), np.ones(num_vals), np.ones(num_vals), np.ones(num_vals)
+    train_in_envy_vio, test_in_envy_vio, train_in_envy_vio_var, test_in_envy_vio_var = \
             np.ones(num_vals), np.ones(num_vals), np.ones(num_vals), np.ones(num_vals)
     
     for index, ns_ in enumerate(ns_vals):
@@ -116,7 +117,8 @@ def sweep_ns_parameters_parallel(ns_vals, func, lambda_val, group_dist, L_mats, 
         c_train_envy_vio, c_test_envy_vio = np.ones(num_sims), np.ones(num_sims)
         c_train_equi, c_test_equi = np.ones(num_sims), np.ones(num_sims)
         c_train_equi_vio, c_test_equi_vio = np.ones(num_sims), np.ones(num_sims)
-        c_train_min_welfare, c_test_min_welfare = np.ones(num_sims), np.ones(num_sims)
+        c_train_in_envy, c_test_in_envy = np.ones(num_sims), np.ones(num_sims)
+        c_train_in_envy_vio, c_test_in_envy_vio = np.ones(num_sims), np.ones(num_sims)
 
         inputs = []
         for sim in range(num_sims):
@@ -137,14 +139,14 @@ def sweep_ns_parameters_parallel(ns_vals, func, lambda_val, group_dist, L_mats, 
             train_data, test_data = future.result()
             if train_data == None:
                 c_train_losses[sim], c_train_welfare[sim], c_train_envy[sim], c_train_envy_vio[sim], \
-                    c_train_equi[sim], c_train_equi_vio[sim], c_train_min_welfare[sim] = -1, -1, -1, -1, -1, -1, -1
+                    c_train_equi[sim], c_train_equi_vio[sim], c_train_in_envy[sim], c_train_in_envy_vio[sim] = -1, -1, -1, -1, -1, -1, -1, -1
                 c_test_losses[sim], c_test_welfare[sim], c_test_envy[sim], c_test_envy_vio[sim], \
-                    c_test_equi[sim], c_test_equi_vio[sim], c_test_min_welfare[sim] = -1, -1, -1, -1, -1, -1, -1
+                    c_test_equi[sim], c_test_equi_vio[sim], c_test_in_envy[sim], c_test_in_envy_vio[sim] = -1, -1, -1, -1, -1, -1, -1, -1
             else:
                 c_train_losses[sim], c_train_welfare[sim], c_train_envy[sim], c_train_envy_vio[sim], \
-                    c_train_equi[sim], c_train_equi_vio[sim], c_train_min_welfare[sim] = train_data
+                    c_train_equi[sim], c_train_equi_vio[sim], c_train_in_envy[sim], c_train_in_envy_vio[sim] = train_data
                 c_test_losses[sim], c_test_welfare[sim], c_test_envy[sim], c_test_envy_vio[sim], \
-                    c_test_equi[sim], c_test_equi_vio[sim], c_test_min_welfare[sim] = test_data
+                    c_test_equi[sim], c_test_equi_vio[sim], c_test_in_envy[sim], c_test_in_envy_vio[sim] = test_data
             
             #print(ns, "Train Equi: ", c_train_equi[sim])
             #print(ns, "Test Equi: ", c_test_equi[sim])
@@ -161,8 +163,10 @@ def sweep_ns_parameters_parallel(ns_vals, func, lambda_val, group_dist, L_mats, 
         np.delete(c_test_equi, np.where(c_test_equi==-1))
         np.delete(c_train_equi_vio, np.where(c_train_equi_vio==-1))
         np.delete(c_test_equi_vio, np.where(c_test_equi_vio==-1))
-        np.delete(c_train_min_welfare, np.where(c_train_min_welfare==-1))
-        np.delete(c_test_min_welfare, np.where(c_test_min_welfare==-1))
+        np.delete(c_train_in_envy, np.where(c_train_in_envy==-1))
+        np.delete(c_test_in_envy, np.where(c_test_in_envy==-1))
+        np.delete(c_train_in_envy_vio, np.where(c_train_in_envy_vio==-1))
+        np.delete(c_test_in_envy_vio, np.where(c_test_in_envy_vio==-1))
 
         train_losses[index], train_losses_var[index] = np.mean(c_train_losses), np.sqrt(np.var(c_train_losses))
         test_losses[index], test_losses_var[index] = np.mean(c_test_losses), np.sqrt(np.var(c_test_losses))
@@ -182,8 +186,11 @@ def sweep_ns_parameters_parallel(ns_vals, func, lambda_val, group_dist, L_mats, 
         train_equi_vio[index], train_equi_vio_var[index] = np.mean(c_train_equi_vio), np.sqrt(np.var(c_train_equi_vio))
         test_equi_vio[index], test_equi_vio_var[index] = np.mean(c_test_equi_vio), np.sqrt(np.var(c_test_equi_vio))
        
-        train_min_welfare[index], train_min_welfare_var[index] = np.mean(c_train_min_welfare), np.sqrt(np.var(c_train_min_welfare))
-        test_min_welfare[index], test_min_welfare_var[index] = np.mean(c_test_min_welfare), np.sqrt(np.var(c_test_min_welfare))
+        train_in_envy[index], train_in_envy_var[index] = np.mean(c_train_in_envy), np.sqrt(np.var(c_train_in_envy))
+        test_in_envy[index], test_in_envy_var[index] = np.mean(c_test_in_envy), np.sqrt(np.var(c_test_in_envy))
+        
+        train_in_envy_vio[index], train_in_envy_vio_var[index] = np.mean(c_train_in_envy_vio), np.sqrt(np.var(c_train_in_envy_vio))
+        test_in_envy_vio[index], test_in_envy_vio_var[index] = np.mean(c_test_in_envy_vio), np.sqrt(np.var(c_test_in_envy_vio))
         
         #print("Envy train and test: ", train_envy[index], test_envy[index])
         #print("Envy vio train and test: ", train_envy_vio[index], test_envy_vio[index])
@@ -200,8 +207,10 @@ def sweep_ns_parameters_parallel(ns_vals, func, lambda_val, group_dist, L_mats, 
                            [str(test_equi[index])] +  [str(test_equi_var[index])] + \
                            [str(train_equi_vio[index])] +  [str(train_equi_vio_var[index])] + \
                            [str(test_equi_vio[index])] +  [str(test_equi_vio_var[index])] + \
-                           [str(train_min_welfare[index])] + [str(train_min_welfare_var[index])] +\
-                           [str(test_min_welfare[index])] +  [str(test_min_welfare_var[index])]
+                           [str(train_in_envy[index])] + [str(train_in_envy_var[index])] +\
+                           [str(test_in_envy[index])] +  [str(test_in_envy_var[index])] + \
+                           [str(train_in_envy_vio[index])] + [str(train_in_envy_vio_var[index])] +\
+                           [str(test_in_envy_vio[index])] +  [str(test_in_envy_vio_var[index])]
 
         csv_writer.writerow(row)
         csv_file.flush()
@@ -239,12 +248,14 @@ def sweep_g_parameters_parallel(g_vals, func, lambda_val, L_mats, U_mats):
             np.ones(num_vals), np.ones(num_vals), np.ones(num_vals), np.ones(num_vals)
     train_equi_vio, test_equi_vio, train_equi_vio_var, test_equi_vio_var = \
             np.ones(num_vals), np.ones(num_vals), np.ones(num_vals), np.ones(num_vals)
-    train_min_welfare, test_min_welfare, train_min_welfare_var, test_min_welfare_var = \
+    train_in_envy, test_in_envy, train_in_envy_var, test_in_envy_var = \
+            np.ones(num_vals), np.ones(num_vals), np.ones(num_vals), np.ones(num_vals)
+    train_in_envy_vio, test_in_envy_vio, train_in_envy_vio_var, test_in_envy_vio_var = \
             np.ones(num_vals), np.ones(num_vals), np.ones(num_vals), np.ones(num_vals)
     
     for index, g_ in enumerate(g_vals):
         g_ = int(g_)
-        print("g: ", g_)
+        print("ns:", ns, "g:", g_)
         group_dist = [1/g_ for i in range(g_)]
         print(group_dist)
         # these store values for every simulation - will be averaged
@@ -254,7 +265,8 @@ def sweep_g_parameters_parallel(g_vals, func, lambda_val, L_mats, U_mats):
         c_train_envy_vio, c_test_envy_vio = np.ones(num_sims), np.ones(num_sims)
         c_train_equi, c_test_equi = np.ones(num_sims), np.ones(num_sims)
         c_train_equi_vio, c_test_equi_vio = np.ones(num_sims), np.ones(num_sims)
-        c_train_min_welfare, c_test_min_welfare = np.ones(num_sims), np.ones(num_sims)
+        c_train_in_envy, c_test_in_envy = np.ones(num_sims), np.ones(num_sims)
+        c_train_in_envy_vio, c_test_in_envy_vio = np.ones(num_sims), np.ones(num_sims)
 
         inputs = []
         for sim in range(num_sims):
@@ -275,14 +287,14 @@ def sweep_g_parameters_parallel(g_vals, func, lambda_val, L_mats, U_mats):
             train_data, test_data = future.result()
             if train_data == None:
                 c_train_losses[sim], c_train_welfare[sim], c_train_envy[sim], c_train_envy_vio[sim], \
-                    c_train_equi[sim], c_train_equi_vio[sim], c_train_min_welfare[sim] = -1, -1, -1, -1, -1, -1, -1
+                    c_train_equi[sim], c_train_equi_vio[sim], c_train_in_envy[sim], c_train_in_envy_vio[sim] = -1, -1, -1, -1, -1, -1, -1, -1
                 c_test_losses[sim], c_test_welfare[sim], c_test_envy[sim], c_test_envy_vio[sim], \
-                    c_test_equi[sim], c_test_equi_vio[sim], c_test_min_welfare[sim] = -1, -1, -1, -1, -1, -1, -1
+                    c_test_equi[sim], c_test_equi_vio[sim], c_test_in_envy[sim], c_test_in_envy_vio[sim] = -1, -1, -1, -1, -1, -1, -1, -1
             else:
                 c_train_losses[sim], c_train_welfare[sim], c_train_envy[sim], c_train_envy_vio[sim], \
-                    c_train_equi[sim], c_train_equi_vio[sim], c_train_min_welfare[sim] = train_data
+                    c_train_equi[sim], c_train_equi_vio[sim], c_train_in_envy[sim], c_train_in_envy_vio[sim] = train_data
                 c_test_losses[sim], c_test_welfare[sim], c_test_envy[sim], c_test_envy_vio[sim], \
-                    c_test_equi[sim], c_test_equi_vio[sim], c_test_min_welfare[sim] = test_data
+                    c_test_equi[sim], c_test_equi_vio[sim], c_test_in_envy[sim], c_test_in_envy_vio[sim] = test_data
 
         np.delete(c_train_losses, np.where(c_train_losses==-1))
         np.delete(c_test_losses, np.where(c_test_losses==-1))
@@ -296,8 +308,8 @@ def sweep_g_parameters_parallel(g_vals, func, lambda_val, L_mats, U_mats):
         np.delete(c_test_equi, np.where(c_test_equi==-1))
         np.delete(c_train_equi_vio, np.where(c_train_equi_vio==-1))
         np.delete(c_test_equi_vio, np.where(c_test_equi_vio==-1))
-        np.delete(c_train_min_welfare, np.where(c_train_min_welfare==-1))
-        np.delete(c_test_min_welfare, np.where(c_test_min_welfare==-1))
+        np.delete(c_train_in_envy_vio, np.where(c_train_in_envy_vio==-1))
+        np.delete(c_test_in_envy_vio, np.where(c_test_in_envy_vio==-1))
 
         train_losses[index], train_losses_var[index] = np.mean(c_train_losses), np.sqrt(np.var(c_train_losses))
         test_losses[index], test_losses_var[index] = np.mean(c_test_losses), np.sqrt(np.var(c_test_losses))
@@ -317,8 +329,11 @@ def sweep_g_parameters_parallel(g_vals, func, lambda_val, L_mats, U_mats):
         train_equi_vio[index], train_equi_vio_var[index] = np.mean(c_train_equi_vio), np.sqrt(np.var(c_train_equi_vio))
         test_equi_vio[index], test_equi_vio_var[index] = np.mean(c_test_equi_vio), np.sqrt(np.var(c_test_equi_vio))
         
-        train_min_welfare[index], train_min_welfare_var[index] = np.mean(c_train_min_welfare), np.sqrt(np.var(c_train_min_welfare))
-        test_min_welfare[index], test_min_welfare_var[index] = np.mean(c_test_min_welfare), np.sqrt(np.var(c_test_min_welfare))
+        train_in_envy[index], train_in_envy_var[index] = np.mean(c_train_in_envy), np.sqrt(np.var(c_train_in_envy))
+        test_in_envy[index], test_in_envy_var[index] = np.mean(c_test_in_envy), np.sqrt(np.var(c_test_in_envy))
+        
+        train_in_envy_vio[index], train_in_envy_vio_var[index] = np.mean(c_train_in_envy_vio), np.sqrt(np.var(c_train_in_envy_vio))
+        test_in_envy_vio[index], test_in_envy_vio_var[index] = np.mean(c_test_in_envy_vio), np.sqrt(np.var(c_test_in_envy_vio))
        
         #print("Envy train and test: ", train_envy[index], test_envy[index])
         #print("Envy vio train and test: ", train_envy_vio[index], test_envy_vio[index])
@@ -335,13 +350,13 @@ def sweep_g_parameters_parallel(g_vals, func, lambda_val, L_mats, U_mats):
                            [str(test_equi[index])] +  [str(test_equi_var[index])] + \
                            [str(train_equi_vio[index])] +  [str(train_equi_vio_var[index])] + \
                            [str(test_equi_vio[index])] +  [str(test_equi_vio_var[index])] +\
-                           [str(train_min_welfare[index])] + [str(train_min_welfare_var[index])] +\
-                           [str(test_min_welfare[index])] +  [str(test_min_welfare_var[index])]
+                           [str(train_in_envy_vio[index])] + [str(train_in_envy_vio_var[index])] +\
+                           [str(test_in_envy_vio[index])] +  [str(test_in_envy_vio_var[index])]
 
         csv_writer.writerow(row)
         csv_file.flush()
 
-def envy_experiment(func, lambda_val, L_mats, U_mats_dict, gef):
+def envy_experiment(func, lambda_val, L_mats, U_mats_dict):
     # TODO: Fix how fairness is stored? 
     # TODO: Pass functions and not strings for distribution parameters
     """ fairness_func is the function used to compute fairness; None for ERM_loss
@@ -370,20 +385,22 @@ def envy_experiment(func, lambda_val, L_mats, U_mats_dict, gef):
             np.ones(num_vals), np.ones(num_vals), np.ones(num_vals), np.ones(num_vals)
     train_envy_vio, test_envy_vio, train_envy_vio_var, test_envy_vio_var = \
             np.ones(num_vals), np.ones(num_vals), np.ones(num_vals), np.ones(num_vals)
+    train_in_envy, test_in_envy, train_in_envy_var, test_in_envy_var = \
+            np.ones(num_vals), np.ones(num_vals), np.ones(num_vals), np.ones(num_vals)
+    train_in_envy_vio, test_in_envy_vio, train_in_envy_vio_var, test_in_envy_vio_var = \
+            np.ones(num_vals), np.ones(num_vals), np.ones(num_vals), np.ones(num_vals)
     
     for index, var_ in enumerate(var_vals):
-        ns = 80
+        ns = 50
         print("Var: ", var_, "ns: ", ns)
         group_dist = [0.25, 0.25, 0.25, 0.25]
-        if gef:
-            num_constraints = len(group_dist)*(len(group_dist)-1)
-        else:
-            num_constraints = ns*(ns-1)
 
         # these store values for every simulation - will be averaged
         c_train_losses, c_test_losses = np.ones(num_sims), np.ones(num_sims)
         c_train_envy, c_test_envy = np.ones(num_sims), np.ones(num_sims)
         c_train_envy_vio, c_test_envy_vio = np.ones(num_sims), np.ones(num_sims)
+        c_train_in_envy, c_test_in_envy = np.ones(num_sims), np.ones(num_sims)
+        c_train_in_envy_vio, c_test_in_envy_vio = np.ones(num_sims), np.ones(num_sims)
 
         inputs = []
         for sim in range(num_sims):
@@ -403,13 +420,15 @@ def envy_experiment(func, lambda_val, L_mats, U_mats_dict, gef):
             assert(future.done())
             train_data, test_data = future.result()
             if train_data == None:
-                c_train_losses[sim], c_train_envy[sim], c_train_envy_vio[sim] = -1, -1, -1
-                c_test_losses[sim], c_test_envy[sim], c_test_envy_vio[sim] = -1, -1, -1
+                c_train_losses[sim], c_train_envy[sim], c_train_envy_vio[sim],\
+                    c_train_in_envy[sim], c_train_in_envy_vio[sim] = -1, -1, -1, -1, -1
+                c_test_losses[sim], c_test_envy[sim], c_test_envy_vio[sim], \
+                        c_test_in_envy[sim], c_test_in_envy_vio[sim] = -1, -1, -1, -1, -1
             else:
-                c_train_losses[sim], _, c_train_envy[sim], c_train_envy_vio[sim], _, _, _ = train_data
-                c_test_losses[sim], _, c_test_envy[sim], c_test_envy_vio[sim], _, _, _ = test_data
-                c_train_envy_vio[sim] /= num_constraints 
-                c_test_envy_vio[sim] /= num_constraints 
+                c_train_losses[sim], _, c_train_envy[sim], c_train_envy_vio[sim], _, _, \
+                        c_train_in_envy[sim], c_train_in_envy_vio[sim] = train_data
+                c_test_losses[sim], _, c_test_envy[sim], c_test_envy_vio[sim], _, _, \
+                        c_test_in_envy[sim], c_test_in_envy_vio[sim] = test_data
 
         np.delete(c_train_losses, np.where(c_train_losses==-1))
         np.delete(c_test_losses, np.where(c_test_losses==-1))
@@ -417,6 +436,10 @@ def envy_experiment(func, lambda_val, L_mats, U_mats_dict, gef):
         np.delete(c_test_envy, np.where(c_test_envy==-1))
         np.delete(c_train_envy_vio, np.where(c_train_envy_vio==-1))
         np.delete(c_test_envy_vio, np.where(c_test_envy_vio==-1))
+        np.delete(c_train_in_envy, np.where(c_train_in_envy==-1))
+        np.delete(c_test_in_envy, np.where(c_test_in_envy==-1))
+        np.delete(c_train_in_envy_vio, np.where(c_train_in_envy_vio==-1))
+        np.delete(c_test_in_envy_vio, np.where(c_test_in_envy_vio==-1))
 
         train_losses[index], train_losses_var[index] = np.mean(c_train_losses), np.sqrt(np.var(c_train_losses))
         test_losses[index], test_losses_var[index] = np.mean(c_test_losses), np.sqrt(np.var(c_test_losses))
@@ -426,6 +449,12 @@ def envy_experiment(func, lambda_val, L_mats, U_mats_dict, gef):
         
         train_envy_vio[index], train_envy_vio_var[index] = np.mean(c_train_envy_vio), np.sqrt(np.var(c_train_envy_vio))
         test_envy_vio[index], test_envy_vio_var[index] = np.mean(c_test_envy_vio), np.sqrt(np.var(c_test_envy_vio))
+        
+        train_in_envy[index], train_in_envy_var[index] = np.mean(c_train_in_envy), np.sqrt(np.var(c_train_in_envy))
+        test_in_envy[index], test_in_envy_var[index] = np.mean(c_test_in_envy), np.sqrt(np.var(c_test_in_envy))
+        
+        train_in_envy_vio[index], train_in_envy_vio_var[index] = np.mean(c_train_in_envy_vio), np.sqrt(np.var(c_train_in_envy_vio))
+        test_in_envy_vio[index], test_in_envy_vio_var[index] = np.mean(c_test_in_envy_vio), np.sqrt(np.var(c_test_in_envy_vio))
         
         row = [str(var_)] + [str(train_losses[index])] + [str(train_losses_var[index])] +\
                            [str(test_losses[index])] + [str(test_losses_var[index])] +\
@@ -439,12 +468,14 @@ def envy_experiment(func, lambda_val, L_mats, U_mats_dict, gef):
                            [str(0)] +  [str(0)] + \
                            [str(0)] +  [str(0)] + \
                            [str(0)] +  [str(0)] +\
-                           [str(0)] + [str(0)] +\
-                           [str(0)] +  [str(0)]
+                           [str(train_in_envy[index])] + [str(train_in_envy_var[index])] +\
+                           [str(test_in_envy[index])] +  [str(test_in_envy_var[index])] + \
+                           [str(train_in_envy_vio[index])] + [str(train_in_envy_vio_var[index])] +\
+                           [str(test_in_envy_vio[index])] +  [str(test_in_envy_vio_var[index])]
 
         csv_writer.writerow(row)
         csv_file.flush()
-        
+
 def benchmark_erm():
     # Following values were used for this benchmark test: lambda_welf=1, num_sims=50, NUM_CORES=16
     # It took 57.5s on my Vector Workstation (not server)
@@ -478,7 +509,7 @@ def benchmark_erm_envy():
     end = time.time()
     print("ERM envy free took: ", end-start)
 
-def run_envy_experiment(L_mats):
+def run_envy_experiment(L_mats, typ):
     all_vars = [0, 0.2, 0.4, 0.6, 0.8]
     U_mat_dict = {}
     for curr_var in all_vars:
@@ -488,16 +519,22 @@ def run_envy_experiment(L_mats):
         u_file = np.load(name+'.npz')
         U_mats = [u_file[i] for i in u_file.files]
         U_mat_dict[curr_var] = U_mats
-    envy_experiment(train_erm_envy_free, 10, L_mats, U_mat_dict, False)
+
+    if typ == "in_envy":
+        envy_experiment(train_erm_envy_free, 10, L_mats, U_mat_dict)
+    elif typ == "g_envy":
+        envy_experiment(train_erm_gef, 10, L_mats, U_mat_dict)
+    else:
+        envy_experiment(train_erm, 10, L_mats, U_mat_dict)
     
 def ns_experiment(L_mats, U_mats):
-    ns_vals = [30,40,50,60,70,80,90,100,110,120, 130, 140, 150]
+    ns_vals = [35,45,55,65,75,85,95]
     group_dist = [0.25, 0.25, 0.25, 0.25]
     
-    #start = time.time()
-    #sweep_ns_parameters_parallel(ns_vals, train_erm, 0, group_dist, L_mats, U_mats)
-    #end = time.time()
-    #print("ERM experiment took:", end-start)
+    start = time.time()
+    sweep_ns_parameters_parallel(ns_vals, train_erm, 0, group_dist, L_mats, U_mats)
+    end = time.time()
+    print("ERM experiment took:", end-start)
     
     #start = time.time()
     #sweep_ns_parameters_parallel(ns_vals, train_erm_welfare, 10, group_dist, L_mats, U_mats)
@@ -505,42 +542,43 @@ def ns_experiment(L_mats, U_mats):
     #print("ERM welfare took: ", end-start)
     
     #start = time.time()
+    #sweep_ns_parameters_parallel(ns_vals, train_erm_equi, 10, group_dist, L_mats, U_mats)
+    #end = time.time()
+    #print("ERM equi took: ", end-start)
+    
+    #start = time.time()
     #sweep_ns_parameters_parallel(ns_vals, train_erm_gef, 10, group_dist, L_mats, U_mats)
     #end = time.time()
     #print("ERM envy free took: ", end-start)
     
     #start = time.time()
-    #sweep_ns_parameters_parallel(ns_vals, train_erm_equi, 10, group_dist, L_mats, U_mats)
-    #end = time.time()
-    #print("ERM equi took: ", end-start)
-    
-    start = time.time()
-    sweep_ns_parameters_parallel(ns_vals, train_erm_min_welfare, 1000, group_dist, L_mats, U_mats)
-    end = time.time()
-    print("ERM equi took: ", end-start)
-
-def g_experiment(L_mats, U_mats):
-    g_vals = [3,5,7,9] 
-    
-    start = time.time()
-    sweep_g_parameters_parallel(g_vals, train_erm, 0, L_mats, U_mats)
-    end = time.time()
-    print("ERM experiment took:", end-start)
-    
-    start = time.time()
-    sweep_g_parameters_parallel(g_vals, train_erm_welfare, 10, L_mats, U_mats)
-    end = time.time()
-    print("ERM welfare took: ", end-start)
-    
-    #start = time.time()
-    #sweep_g_parameters_parallel(g_vals, train_erm_gef, 10, L_mats, U_mats)
+    #sweep_ns_parameters_parallel(ns_vals, train_erm_envy_free, 10, group_dist, L_mats, U_mats)
     #end = time.time()
     #print("ERM envy free took: ", end-start)
+    
+    
+def g_experiment(L_mats, U_mats):
+    g_vals = [8,9] 
+    
+    #start = time.time()
+    #sweep_g_parameters_parallel(g_vals, train_erm, 0, L_mats, U_mats)
+    #end = time.time()
+    #print("ERM experiment took:", end-start)
+    
+    #start = time.time()
+    #sweep_g_parameters_parallel(g_vals, train_erm_welfare, 10, L_mats, U_mats)
+    #end = time.time()
+    #print("ERM welfare took: ", end-start)
     
     #start = time.time()
     #sweep_g_parameters_parallel(g_vals, train_erm_equi, 10, L_mats, U_mats)
     #end = time.time()
     #print("ERM equi took: ", end-start)
+    
+    start = time.time()
+    sweep_g_parameters_parallel(g_vals, train_erm_gef, 10, L_mats, U_mats)
+    end = time.time()
+    print("ERM envy free took: ", end-start)
 
 def main():
     #benchmark_erm()
@@ -551,17 +589,19 @@ def main():
     #U_mats = [generate_utility_matrix(d, m, 'uniform') for i in range(num_sims)]
     #np.savez("L_mat_file", *L_mats)
     #np.savez("U_mat_file", *U_mats)
-    
+
     l_file = np.load('L_mat_file.npz')
     L_mats = [l_file[i] for i in l_file.files]
     u_file = np.load('U_mat_file.npz')
     U_mats = [u_file[i] for i in u_file.files]
+
+    if sys.argv[1] == "ns":
+        ns_experiment(L_mats, U_mats)
+    if sys.argv[1] == "g":
+        g_experiment(L_mats, U_mats)
+    if sys.argv[1] == "envy":
+        run_envy_experiment(L_mats, "erm")
    
-    ns_experiment(L_mats, U_mats)
-    #run_envy_experiment(L_mats)
-    
 if __name__ == "__main__":
     main()
-
-
 

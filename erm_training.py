@@ -8,6 +8,8 @@ def train_erm(X, L_mat, U_mat=None, groups=None, lamb=0):
         So this is basically deterministic
     """
     L_X = np.matmul(X, L_mat.T)
+    L_X = normalize(L_X, axis=1, norm='l1')
+    
     n, d = L_X.shape
     n, m = X.shape
 
