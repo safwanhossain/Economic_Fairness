@@ -48,18 +48,18 @@ def plot(labels, data, plot_var=False):
     ax1.set_ylabel(fairness_label, fontsize=21)
         
     #labels = ["ERM", "ERM-Welfare", "ERM-Group Envy", "ERM-Group Equity"]
-    labels = ["ERM", "ERM-Group Envy Free", "ERM-In Envy Free"]
+    #labels = ["ERM", "ERM-Group Envy Free", "ERM-In Envy Free"]
     for i in range(num_files):
-        ax1.plot(f_x_vals[i], f_train[i], color=colors[i], linewidth=4, label=labels[i])
-        #ax1.plot(f_x_vals[i], f_test[i], color=colors[i], linestyle=":", linewidth=4)
+        #ax1.plot(f_x_vals[i], f_train[i], color=colors[i], linewidth=4, label=labels[i])
+        ax1.plot(f_x_vals[i], f_test[i], color=colors[i], linewidth=4)
         if plot_var:
-            ax1.fill_between(f_x_vals[i], f_train[i]-f_train_var[i], f_train[i]+f_train_var[i], color=colors[i], alpha=0.35)
-            #ax1.fill_between(f_x_vals[i], f_test[i]-f_test_var[i], f_test[i]+f_test_var[i], color=colors[i], alpha=0.35)
+            #ax1.fill_between(f_x_vals[i], f_train[i]-f_train_var[i], f_train[i]+f_train_var[i], color=colors[i], alpha=0.35)
+            ax1.fill_between(f_x_vals[i], f_test[i]-f_test_var[i], f_test[i]+f_test_var[i], color=colors[i], alpha=0.35)
 
     ax1.tick_params(axis='x', labelsize=17)
     ax1.tick_params(axis='y', labelsize=17)
-    
-    plt.legend()
+    plt.xticks([25,50,75,100,125,150]) 
+    #plt.legend()
     plt.grid(False)
     plt.tight_layout()
     plt.savefig(plt_name)
@@ -69,8 +69,8 @@ if __name__ == "__main__":
         Pass in files in this order: erm, erm_welfare, erm_envy, erm_equity
     """
     
-    metrics_dict = {'Loss':[1,2,3,4], 'Welfare':[5,6,7,8], 'Group Envy':[9,10,11,12], \
-            'Group Envy Vio':[13,14,15,16], 'Group Equity':[17,18,19,20], 'Individual Envy':[25,26,27,28], 'Individual Envy Vio':[29,30,31,32]}
+    metrics_dict = {'Loss':[1,2,3,4], 'Welfare':[5,6,7,8], 'Avg. Group Envy':[9,10,11,12], \
+            'Group Envy Vio':[13,14,15,16], 'Avg. Group Inequity':[17,18,19,20], 'Avg. Envy':[25,26,27,28], 'Individual Envy Vio':[29,30,31,32]}
     inp_files = [sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]]
     files = []
     for inp_file in inp_files:
