@@ -1,4 +1,4 @@
-# Economic_Fairness
+# Designing Fairly Fair Classifiers via Economic Fairness Notions
 
 This repository contains experimental code for a paper on using economic fairness notions in Machine Learning. 
 
