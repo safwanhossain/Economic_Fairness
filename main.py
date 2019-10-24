@@ -83,7 +83,7 @@ def sweep_ns_parameters_parallel(ns_vals, func, lambda_val, group_dist, L_mats, 
     """
     import concurrent.futures 
     
-    filename = "sweep_n_"+func.__name__+".csv"
+    filename = "sweep_n_100sim_"+func.__name__+".csv"
     print("Params: lambda=", lambda_val, "num_sim=", num_sims) 
     print("Saving results to", filename)
     
@@ -543,18 +543,18 @@ def run_envy_experiment(L_mats, typ):
         envy_experiment(train_erm, 10, L_mats, U_mat_dict)
     
 def ns_experiment(L_mats, U_mats):
-    ns_vals = [30,35,40,45,50,55,60,65,70,75,80]
+    ns_vals = [30,40,50,60,70,80,90,100,110,120,130,140]
     group_dist = [0.25, 0.25, 0.25, 0.25]
     
-    #start = time.time()
-    #sweep_ns_parameters_parallel(ns_vals, train_erm, 0, group_dist, L_mats, U_mats)
-    #end = time.time()
-    #print("ERM experiment took:", end-start)
+    start = time.time()
+    sweep_ns_parameters_parallel(ns_vals, train_erm, 0, group_dist, L_mats, U_mats)
+    end = time.time()
+    print("ERM experiment took:", end-start)
     
-    #start = time.time()
-    #sweep_ns_parameters_parallel(ns_vals, train_erm_welfare, 10, group_dist, L_mats, U_mats)
-    #end = time.time()
-    #print("ERM welfare took: ", end-start)
+    start = time.time()
+    sweep_ns_parameters_parallel(ns_vals, train_erm_welfare, 10, group_dist, L_mats, U_mats)
+    end = time.time()
+    print("ERM welfare took: ", end-start)
     
     start = time.time()
     sweep_ns_parameters_parallel(ns_vals, train_erm_equi, 10, group_dist, L_mats, U_mats)
@@ -564,7 +564,7 @@ def ns_experiment(L_mats, U_mats):
     start = time.time()
     sweep_ns_parameters_parallel(ns_vals, train_erm_gef, 10, group_dist, L_mats, U_mats)
     end = time.time()
-    print("ERM envy free took: ", end-start)
+    print("ERM group envy free took: ", end-start)
     
     #start = time.time()
     #sweep_ns_parameters_parallel(ns_vals, train_erm_envy_free, 10, group_dist, L_mats, U_mats)
