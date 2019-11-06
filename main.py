@@ -543,53 +543,54 @@ def run_envy_experiment(L_mats, typ):
         envy_experiment(train_erm, 10, L_mats, U_mat_dict)
     
 def ns_experiment(L_mats, U_mats):
-    ns_vals = [30,40,50,60,70,80,90,100,110,120,130,140]
+    ns_vals = [65, 70, 75, 80]
     group_dist = [0.25, 0.25, 0.25, 0.25]
     
-    start = time.time()
-    sweep_ns_parameters_parallel(ns_vals, train_erm, 0, group_dist, L_mats, U_mats)
-    end = time.time()
-    print("ERM experiment took:", end-start)
-    
-    start = time.time()
-    sweep_ns_parameters_parallel(ns_vals, train_erm_welfare, 10, group_dist, L_mats, U_mats)
-    end = time.time()
-    print("ERM welfare took: ", end-start)
-    
-    start = time.time()
-    sweep_ns_parameters_parallel(ns_vals, train_erm_equi, 10, group_dist, L_mats, U_mats)
-    end = time.time()
-    print("ERM equi took: ", end-start)
-    
-    start = time.time()
-    sweep_ns_parameters_parallel(ns_vals, train_erm_gef, 10, group_dist, L_mats, U_mats)
-    end = time.time()
-    print("ERM group envy free took: ", end-start)
-    
     #start = time.time()
-    #sweep_ns_parameters_parallel(ns_vals, train_erm_envy_free, 10, group_dist, L_mats, U_mats)
-    #end = time.time()
-    #print("ERM envy free took: ", end-start)
-    
-    
-def g_experiment(L_mats, U_mats):
-    g_vals = [8,9] 
-    
-    #start = time.time()
-    #sweep_g_parameters_parallel(g_vals, train_erm, 0, L_mats, U_mats)
+    #sweep_ns_parameters_parallel(ns_vals, train_erm, 0, group_dist, L_mats, U_mats)
     #end = time.time()
     #print("ERM experiment took:", end-start)
     
     #start = time.time()
-    #sweep_g_parameters_parallel(g_vals, train_erm_welfare, 10, L_mats, U_mats)
+    #sweep_ns_parameters_parallel(ns_vals, train_erm_welfare, 10, group_dist, L_mats, U_mats)
     #end = time.time()
     #print("ERM welfare took: ", end-start)
     
     #start = time.time()
-    #sweep_g_parameters_parallel(g_vals, train_erm_equi, 10, L_mats, U_mats)
+    #sweep_ns_parameters_parallel(ns_vals, train_erm_equi, 10, group_dist, L_mats, U_mats)
     #end = time.time()
     #print("ERM equi took: ", end-start)
     
+    #start = time.time()
+    #sweep_ns_parameters_parallel(ns_vals, train_erm_gef, 10, group_dist, L_mats, U_mats)
+    #end = time.time()
+    #print("ERM group envy free took: ", end-start)
+    
+    start = time.time()
+    sweep_ns_parameters_parallel(ns_vals, train_erm_envy_free, 10, group_dist, L_mats, U_mats)
+    end = time.time()
+    print("ERM envy free took: ", end-start)
+    
+    
+def g_experiment(L_mats, U_mats):
+    g_vals = [2,3,4,5,6,7,8,9] 
+    
+    start = time.time()
+    sweep_g_parameters_parallel(g_vals, train_erm, 0, L_mats, U_mats)
+    end = time.time()
+    print("ERM experiment took:", end-start)
+    
+    start = time.time()
+    sweep_g_parameters_parallel(g_vals, train_erm_welfare, 10, L_mats, U_mats)
+    end = time.time()
+    print("ERM welfare took: ", end-start)
+    
+    start = time.time()
+    sweep_g_parameters_parallel(g_vals, train_erm_equi, 10, L_mats, U_mats)
+    end = time.time()
+    print("ERM equi took: ", end-start)
+    
+    g_vals = [5,6,7,8,9] 
     start = time.time()
     sweep_g_parameters_parallel(g_vals, train_erm_gef, 10, L_mats, U_mats)
     end = time.time()

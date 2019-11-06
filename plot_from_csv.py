@@ -16,8 +16,8 @@ def read_from_csv(filenames, indicies):
         
         for row in csv_reader:
             # Confidence interval is computed according to: scale*(std_dev/sqrt(num_sims))
-            # 80% confidence - scale of 1.28
-            scale = 1.28
+            # 90% confidence - scale of 1.6
+            scale = 1.5
             x_vals = np.append(x_vals, float(row[0]))
             train = np.append(train, float(row[indicies[0]]))
             train_var = np.append(train_var, scale*(float(row[indicies[1]])/np.sqrt(num_sims)))
@@ -44,22 +44,29 @@ def plot(labels, data, plot_var=False):
     num_files = len(f_train)
     
     colors = ['tab:red', 'tab:blue', 'tab:green', 'tab:orange']
+    #colors = ['tab:red', 'tab:green', 'tab:grey']
+    #colors = ['tab:green', 'tab:orange', 'tab:grey']
     ax1.set_xlabel(x_label, fontsize=21)
     ax1.set_ylabel(fairness_label, fontsize=21)
         
-    #labels = ["ERM", "ERM-Welfare", "ERM-Group Envy", "ERM-Group Equity"]
-    #labels = ["ERM", "ERM-Group Envy Free", "ERM-In Envy Free"]
+    labels = ["ERM", "ERM-Welfare", "ERM-Group Envy Free", "ERM-Group Equitable"]
+    #labels = ["ERM", "ERM-Group Envy Free", "ERM-Envy Free"]
+    #labels = ["ERM-Group Envy Free", "ERM-Group Equitable", "ERM-Envy Free"]
     for i in range(num_files):
         #ax1.plot(f_x_vals[i], f_train[i], color=colors[i], linewidth=4, label=labels[i])
-        ax1.plot(f_x_vals[i], f_test[i], color=colors[i], linewidth=4)
+        ax1.plot(f_x_vals[i], f_test[i], color=colors[i], linewidth=4, label=labels[i])
+        #ax1.semilogy(f_x_vals[i], f_test[i], color=colors[i], linewidth=4, label=labels[i])
         if plot_var:
             #ax1.fill_between(f_x_vals[i], f_train[i]-f_train_var[i], f_train[i]+f_train_var[i], color=colors[i], alpha=0.35)
             ax1.fill_between(f_x_vals[i], f_test[i]-f_test_var[i], f_test[i]+f_test_var[i], color=colors[i], alpha=0.35)
 
     ax1.tick_params(axis='x', labelsize=17)
     ax1.tick_params(axis='y', labelsize=17)
-    plt.xticks([25,50,75,100,125,150]) 
-    #plt.legend()
+    #plt.xticks([25,50,75,100,125,150])
+    #plt.xticks([30,40,50,60,70,80]) 
+    #plt.xticks([2,3,4,5,6,7,8,9]) 
+    #plt.yticks([0.15, 0.16, 0.17, 0.18, 0.19, 0.20, 0.21])
+    plt.legend()
     plt.grid(False)
     plt.tight_layout()
     plt.savefig(plt_name)
@@ -69,8 +76,9 @@ if __name__ == "__main__":
         Pass in files in this order: erm, erm_welfare, erm_envy, erm_equity
     """
     
-    metrics_dict = {'Loss':[1,2,3,4], 'Welfare':[5,6,7,8], 'Avg. Group Envy':[9,10,11,12], \
-            'Group Envy Vio':[13,14,15,16], 'Avg. Group Inequity':[17,18,19,20], 'Avg. Envy':[25,26,27,28], 'Individual Envy Vio':[29,30,31,32]}
+    metrics_dict = {'Avg. Loss':[1,2,3,4], 'Welfare':[5,6,7,8], 'Avg. Group Envy':[9,10,11,12], \
+            'Group Envy Vio':[13,14,15,16], 'Avg. Group Inequity':[17,18,19,20], 'Avg. Envy':[25,26,27,28], 
+            'Individual Envy Vio':[29,30,31,32], "Time (s)":[33,34,33,34]}
     inp_files = [sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]]
     files = []
     for inp_file in inp_files:
