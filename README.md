@@ -1,6 +1,7 @@
 # Fairly Fair Classifiers via Economic Fairness Notions
 
 This repository contains experimental code for a paper on using economic fairness notions in Machine Learning. 
+https://safwanhossain.github.io/files/envy_equity.pdf
 
 ## Paper Abstract:
 The past decade has witnessed a rapid growth of research on fair-ness in machine learning. 
